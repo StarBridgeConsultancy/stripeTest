@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: stripe-subscription-app
+    runtime: python
+    buildCommand: ""
+    startCommand: gunicorn app:app
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://myapp_r6n3_user:H6R5XiPx4EL8gevrbW4ySEjZIhf72U3y@dpg-d1i13dodl3ps73b1ktc0-a.oregon-postgres.render.com/myapp_r6n3
