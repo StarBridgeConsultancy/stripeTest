@@ -28,6 +28,10 @@
         <!-- Add premium content features here -->
       </div>
     {% endif %}
+    {% if not user.is_subscribed %}
+  <p>Your subscription is inactive. <a href="/subscribe">Subscribe now</a> to unlock full features.</p>
+{% endif %}
+
   </div>
 </body>
 </html>
