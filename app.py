@@ -56,9 +56,11 @@ def login():
         user = User.query.filter_by(email=email, password=password).first()
         if user:
             session['user_id'] = user.id
-            return redirect('/')
+            # Redirect based on subscription status
+            return redirect('/chat') if user.is_subscribed else redirect('/subscribe')
         return "Invalid credentials"
     return render_template('login.html')
+
 
 # Logout
 @app.route('/logout')
