@@ -4,7 +4,6 @@ import os
 import stripe
 from flask_migrate import Migrate
 
-
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure value in production
 
@@ -12,13 +11,12 @@ app.secret_key = 'your_secret_key'  # Replace with a secure value in production
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure Stripe
-stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')  # Set in Render
-STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')  # For client-side use if needed
+# Stripe configuration
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-
 
 # User model
 class User(db.Model):
@@ -27,13 +25,12 @@ class User(db.Model):
     password = db.Column(db.String(100), nullable=False)
     is_subscribed = db.Column(db.Boolean, default=False)
 
-# Home
+# --- ROUTES ---
+
+# Landing page (always shown first)
 @app.route('/')
 def index():
-    if 'user_id' in session:
-        user = User.query.get(session['user_id'])
-        return redirect('/dashboard') if user.is_subscribed else redirect('/subscribe')
-    return redirect('/login')
+    return render_template('index.html')
 
 # Register
 @app.route('/register', methods=['GET', 'POST'])
@@ -67,9 +64,9 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect('/login')
+    return redirect('/')
 
-# Stripe subscription
+# Stripe checkout
 @app.route('/subscribe')
 def subscribe():
     if 'user_id' not in session:
@@ -83,8 +80,8 @@ def subscribe():
         line_items=[{
             'price_data': {
                 'currency': 'usd',
-                'unit_amount': 1000,  # $10.00
-                'product_data': {'name': 'Monthly Dashboard Access'},
+                'unit_amount': 1000,
+                'product_data': {'name': 'Monthly Access'},
             },
             'quantity': 1,
         }],
@@ -94,23 +91,31 @@ def subscribe():
     )
     return redirect(checkout_session.url, code=303)
 
-# Payment success
+# Stripe success
 @app.route('/payment-success')
 def payment_success():
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
         user.is_subscribed = True
         db.session.commit()
-    return redirect('/dashboard')
+    return redirect('/chat')
 
-# Payment cancel
+# Stripe cancel
 @app.route('/payment-cancel')
 def payment_cancel():
     return "Payment was cancelled. <a href='/'>Go back</a>"
 
-# Protected dashboard
+# Protected dashboard (optional)
 @app.route('/dashboard')
 def dashboard():
+    if 'user_id' not in session:
+        return redirect('/login')
+    user = User.query.get(session['user_id'])
+    return render_template('dashboard.html', user=user)
+
+# Subscriber-only chat page
+@app.route('/chat')
+def chat():
     if 'user_id' not in session:
         return redirect('/login')
 
@@ -118,7 +123,7 @@ def dashboard():
     if not user or not user.is_subscribed:
         return redirect('/subscribe')
 
-    return render_template('dashboard.html', user=user)
+    return render_template('chat.html', user=user)
 
 # Run the app
 if __name__ == '__main__':
