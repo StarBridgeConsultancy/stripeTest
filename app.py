@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # change this to something secure
+app.secret_key = 'your_secret_key'  # Replace with a secure key in production
 
 # Use PostgreSQL from environment or fallback to SQLite locally
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
@@ -11,17 +11,18 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Define User model
+# User model
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
 
+# Routes
 @app.route('/')
 def index():
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
-        return f"Welcome, {user.email}!"
+        return render_template('dashboard.html', user=user)
     return redirect('/login')
 
 @app.route('/register', methods=['GET', 'POST'])
