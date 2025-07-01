@@ -1,14 +1,33 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 h-screen flex items-center justify-center">
-  <div class="bg-white p-6 rounded-xl shadow-md text-center">
-    <h1 class="text-2xl font-bold mb-2">Welcome {{ user.email }}!</h1>
-    <a href="{{ url_for('logout') }}" class="mt-4 inline-block text-red-600 hover:underline">Logout</a>
+<body class="bg-gray-50 min-h-screen px-4 py-6">
+  <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-semibold">Welcome, {{ user.email }}</h1>
+      <a href="{{ url_for('logout') }}" class="text-sm text-red-600 hover:underline">Logout</a>
+    </div>
+
+    {% if not user.is_subscribed %}
+      <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 p-4 rounded mb-4">
+        <p>Your subscription is inactive. Please subscribe to access premium features.</p>
+        <a href="{{ url_for('subscribe') }}" class="inline-block mt-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Subscribe</a>
+      </div>
+    {% else %}
+      <div class="text-green-700 font-medium bg-green-100 border border-green-400 p-4 rounded mb-4">
+        🎉 You are subscribed! Access all features below.
+      </div>
+
+      <div class="mt-6">
+        <h2 class="text-lg font-semibold mb-2">Your Premium Content</h2>
+        <p>This section is visible only to subscribed users.</p>
+        <!-- Add premium content features here -->
+      </div>
+    {% endif %}
   </div>
 </body>
 </html>
