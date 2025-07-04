@@ -1,14 +1,14 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen px-4 py-6">
   <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-semibold">Welcome, {{ user.email }}</h1>
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-semibold">Welcome, {{ user.full_name or user.email }}</h1>
       <a href="{{ url_for('logout') }}" class="text-sm text-red-600 hover:underline">Logout</a>
     </div>
 
@@ -22,16 +22,24 @@
         🎉 You are subscribed! Access all features below.
       </div>
 
-      <div class="mt-6">
-        <h2 class="text-lg font-semibold mb-2">Your Premium Content</h2>
-        <p>This section is visible only to subscribed users.</p>
-        <!-- Add premium content features here -->
+      <div class="space-y-4 mt-6">
+        <a href="{{ url_for('profile') }}" class="block text-indigo-600 hover:underline">Update Profile</a>
+        <a href="{{ url_for('jobs') }}" class="block text-indigo-600 hover:underline">Browse Jobs</a>
+        <a href="{{ url_for('dashboard') }}" class="block text-indigo-600 hover:underline">My Applications</a>
+      </div>
+
+      <div class="mt-8">
+        <h2 class="text-lg font-semibold mb-2">Your Profile Summary</h2>
+        <ul class="list-disc list-inside space-y-1 text-gray-700">
+          <li><strong>Full Name:</strong> {{ user.full_name or 'Not set' }}</li>
+          <li><strong>Email:</strong> {{ user.email }}</li>
+          <li><strong>Country:</strong> {{ user.country or 'Not set' }}</li>
+          <li><strong>Preferred Job Type:</strong> {{ user.preferred_job_type or 'Not set' }}</li>
+          <li><strong>Preferred Industries:</strong> {{ user.preferred_industries or 'Not set' }}</li>
+          <li><strong>Skills:</strong> {{ user.skills or 'Not set' }}</li>
+        </ul>
       </div>
     {% endif %}
-    {% if not user.is_subscribed %}
-  <p>Your subscription is inactive. <a href="/subscribe">Subscribe now</a> to unlock full features.</p>
-{% endif %}
-
   </div>
 </body>
 </html>

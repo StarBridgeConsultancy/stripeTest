@@ -1,4 +1,3 @@
-<!-- templates/jobs.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,41 +5,48 @@
   <title>Your Jobs - GoGetJobs</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
+<body class="bg-gray-100 min-h-screen p-6 flex flex-col items-center">
 
-  <div class="w-full max-w-5xl bg-white p-8 rounded-xl shadow-md space-y-10">
+  <div class="w-full max-w-5xl bg-white p-8 rounded-xl shadow space-y-10">
+
+    <h1 class="text-3xl font-bold text-indigo-600 text-center">GoGetJobs - Your Job Dashboard</h1>
 
     <!-- Applied Jobs Section -->
     <section>
-      <h1 class="text-3xl font-bold text-indigo-600 mb-4">Jobs You've Applied To</h1>
+      <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Jobs You've Already Applied To</h2>
       {% if applied_jobs %}
         <ul class="space-y-4">
           {% for job in applied_jobs %}
-            <li class="border p-4 rounded-lg hover:shadow transition">
-              <h2 class="text-xl font-semibold text-gray-800">{{ job.title }}</h2>
+            <li class="border p-4 rounded-lg shadow-sm">
+              <h3 class="text-xl font-bold text-gray-800">{{ job.title }}</h3>
               <p class="text-gray-600">{{ job.company }} &middot; {{ job.location }}</p>
+              {% for app in user.applications %}
+                {% if app.job_id == job.id %}
+                  <p class="text-sm text-gray-500">Applied on: {{ app.applied_date.strftime('%Y-%m-%d') }}</p>
+                {% endif %}
+              {% endfor %}
               <a href="{{ job.link }}" target="_blank" class="text-indigo-500 hover:underline mt-2 inline-block">View Job Posting</a>
-              <p class="text-sm text-gray-500 mt-1">Applied on: {{ job.applied_date }}</p>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="text-gray-500">You haven't applied to any jobs yet. Let us get to work!</p>
+        <p class="text-gray-500">You haven't applied to any jobs yet.</p>
       {% endif %}
     </section>
 
-    <hr class="border-gray-300">
+    <hr class="border-gray-300 my-6">
 
     <!-- Available Jobs Section -->
     <section>
-      <h1 class="text-3xl font-bold text-green-600 mb-4">Available Jobs (Apply Now)</h1>
+      <h2 class="text-2xl font-semibold text-green-700 mb-4">Available Jobs for You</h2>
       {% if available_jobs %}
         <ul class="space-y-4">
           {% for job in available_jobs %}
-            <li class="border p-4 rounded-lg hover:shadow transition">
-              <h2 class="text-xl font-semibold text-gray-800">{{ job.title }}</h2>
+            <li class="border p-4 rounded-lg shadow-sm">
+              <h3 class="text-xl font-bold text-gray-800">{{ job.title }}</h3>
               <p class="text-gray-600">{{ job.company }} &middot; {{ job.location }}</p>
               <a href="{{ job.link }}" target="_blank" class="text-green-500 hover:underline mt-2 inline-block">View Job Posting</a>
+
               <form action="/apply" method="POST" class="mt-2">
                 <input type="hidden" name="job_id" value="{{ job.id }}">
                 <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
@@ -55,7 +61,10 @@
       {% endif %}
     </section>
 
-    <a href="/dashboard" class="mt-6 inline-block text-indigo-600 hover:underline">Back to Dashboard</a>
+    <div class="text-center mt-6">
+      <a href="/dashboard" class="text-indigo-600 hover:underline">Back to Dashboard</a>
+    </div>
+
   </div>
 
 </body>

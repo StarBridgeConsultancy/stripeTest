@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Update Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+  <div class="bg-white max-w-3xl w-full rounded-xl shadow-md p-8">
+    <h2 class="text-3xl font-semibold mb-6 text-gray-800">Update Your Profile</h2>
+
+    <form method="POST" class="space-y-6">
+
+      <!-- Full Name -->
+      <div>
+        <label for="full_name" class="block text-gray-700 font-medium mb-1">Full Name</label>
+        <input type="text" id="full_name" name="full_name" value="{{ user.full_name or '' }}"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <!-- Email (disabled) -->
+      <div>
+        <label for="email" class="block text-gray-700 font-medium mb-1">Email</label>
+        <input type="email" id="email" value="{{ user.email }}" disabled
+          class="w-full bg-gray-100 border border-gray-300 rounded-md px-4 py-2 cursor-not-allowed" />
+      </div>
+
+      <!-- Phone -->
+      <div>
+        <label for="phone" class="block text-gray-700 font-medium mb-1">Phone</label>
+        <input type="text" id="phone" name="phone" value="{{ user.phone or '' }}"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <!-- Address -->
+      <div>
+        <label for="address" class="block text-gray-700 font-medium mb-1">Address</label>
+        <input type="text" id="address" name="address" value="{{ user.address or '' }}"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <!-- Country -->
+      <div>
+        <label for="country" class="block text-gray-700 font-medium mb-1">Country</label>
+        <select id="country" name="country"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          {% set countries = [
+            'United States', 'United Kingdom', 'Canada', 'India', 'Germany', 'Australia', 'France', 'Brazil', 'Japan', 'China',
+            'Mexico', 'Russia', 'South Africa', 'Italy', 'Spain', 'Netherlands', 'Sweden', 'Norway', 'Argentina', 'Chile'
+          ] %}
+          {% for c in countries %}
+            <option value="{{ c }}" {% if user.country == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- City -->
+      <div>
+        <label for="city" class="block text-gray-700 font-medium mb-1">City</label>
+        <input type="text" id="city" name="city" value="{{ user.city or '' }}"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <!-- Preferred Job Type -->
+      <div>
+        <label for="preferred_job_type" class="block text-gray-700 font-medium mb-1">Preferred Job Type</label>
+        <select id="preferred_job_type" name="preferred_job_type"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          {% for t in ['Remote', 'Hybrid', 'Onsite'] %}
+            <option value="{{ t }}" {% if user.preferred_job_type == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Preferred Industries (checkboxes) -->
+      <div>
+        <label class="block text-gray-700 font-medium mb-2">Preferred Industries (Choose multiple)</label>
+        {% set industries = ['IT', 'Healthcare', 'Finance', 'Education', 'Engineering', 'Marketing'] %}
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+          {% for industry in industries %}
+            <label class="inline-flex items-center space-x-2">
+              <input type="checkbox" name="preferred_industries" value="{{ industry }}"
+                {% if user.preferred_industries and industry in user.preferred_industries %}checked{% endif %}
+                class="form-checkbox h-5 w-5 text-indigo-600" />
+              <span class="text-gray-700">{{ industry }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Skills -->
+      <div>
+        <label for="skills" class="block text-gray-700 font-medium mb-1">Skills</label>
+        <textarea id="skills" name="skills" rows="3"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ user.skills or '' }}</textarea>
+      </div>
+
+      <!-- Experience -->
+      <div>
+        <label for="experience" class="block text-gray-700 font-medium mb-1">Experience</label>
+        <textarea id="experience" name="experience" rows="4"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ user.experience or '' }}</textarea>
+      </div>
+
+      <!-- Education -->
+      <div>
+        <label for="education" class="block text-gray-700 font-medium mb-1">Education</label>
+        <textarea id="education" name="education" rows="3"
+          class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ user.education or '' }}</textarea>
+      </div>
+
+      <!-- Submit button -->
+      <div>
+        <button type="submit"
+          class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition">
+          Save Profile
+        </button>
+      </div>
+
+    </form>
+  </div>
+</body>
+</html>
