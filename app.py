@@ -191,7 +191,7 @@ def login():
         user = User.query.filter_by(email=email, password=password).first()
         if user:
             session['user_id'] = user.id
-            return redirect('/jobs') if user.is_subscribed else redirect('/subscribe')
+            return redirect('/jobs') #if user.is_subscribed else redirect('/subscribe')
         return "Invalid credentials"
     return render_template('login.html')
 
