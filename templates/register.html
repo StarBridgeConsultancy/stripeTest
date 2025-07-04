@@ -2,26 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Register</title>
+  <title>Register – GoGetJobs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    :root {
+      --primary: #E21B4D;
+      --navy: #000B8D;
+      --yellow: #FFD300;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
-    <h2 class="text-2xl font-bold mb-6 text-center">Create Account</h2>
-    <form method="post" class="space-y-4">
+<body class="bg-gradient-to-br from-white via-[#f4f4f9] to-[#e2e8f0] text-gray-900 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-200" data-aos="fade-up">
+    <div class="text-center mb-6">
+      <img src="https://img.icons8.com/ios-filled/50/000B8D/add-user-group-man-man.png" class="mx-auto mb-2" alt="Register Icon" />
+      <h2 class="text-3xl font-extrabold text-[#000B8D]">Create Your Account</h2>
+      <p class="text-sm text-gray-500 mt-1">Join GoGetJobs and start your journey</p>
+    </div>
+    <form method="post" class="space-y-5">
       <div>
-        <label class="block text-sm font-medium">Email</label>
-        <input type="email" name="email" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-indigo-200" />
+        <label class="block text-sm font-semibold text-gray-700">Email</label>
+        <input type="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E21B4D]" placeholder="you@example.com" />
       </div>
       <div>
-        <label class="block text-sm font-medium">Password</label>
-        <input type="password" name="password" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-indigo-200" />
+        <label class="block text-sm font-semibold text-gray-700">Password</label>
+        <input type="password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E21B4D]" placeholder="********" />
       </div>
-      <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">Register</button>
+      <button type="submit" class="w-full bg-[#E21B4D] text-white py-2 rounded-lg font-semibold hover:bg-[#c21742] transition duration-200">Register</button>
     </form>
-    <p class="mt-4 text-sm text-center">Already have an account? 
-      <a href="{{ url_for('login') }}" class="text-indigo-600 hover:underline">Login here</a>
+    <p class="mt-6 text-sm text-center text-gray-600">Already have an account? 
+      <a href="{{ url_for('login') }}" class="text-[#000B8D] hover:underline font-medium">Login here</a>
     </p>
   </div>
+  <script>AOS.init();</script>
 </body>
 </html>

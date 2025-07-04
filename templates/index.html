@@ -1,19 +1,147 @@
-<!-- templates/index.html -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Welcome</title>
+  <title>GoGetJobs – Find Your Perfect Job</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    :root {
+      --primary: #E21B4D;
+      --navy: #000B8D;
+      --yellow: #FFD300;
+    }
+    .glass {
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 1s ease-out forwards;
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white h-screen flex items-center justify-center">
-  <div class="text-center">
-    <h1 class="text-4xl font-bold mb-6">Welcome to Our App</h1>
-    <p class="mb-8 text-lg">Please create an account or log in to continue.</p>
-    <div class="space-x-4">
-      <a href="{{ url_for('register') }}" class="bg-white text-indigo-600 px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition">Create Account</a>
-      <a href="{{ url_for('login') }}" class="bg-white text-indigo-600 px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition">Login</a>
+<body class="bg-gradient-to-br from-white via-[#f4f4f9] to-[#e2e8f0] text-gray-900">
+
+  <!-- Hero Banner -->
+  <section class="bg-gradient-to-br from-[#000B8D] via-[#E21B4D] to-[#FFD300] text-white py-24 text-center animate-fadeIn">
+    <div class="max-w-6xl mx-auto px-6">
+      <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">Find Your Perfect Job—Anywhere. Anytime. Whoever You Are.</h1>
+      <p class="text-lg md:text-xl mb-10">GoGetJobs connects people with the right opportunities—across industries, cities, and borders.</p>
+      <div class="space-x-4">
+        <a href="{{ url_for('register') }}" class="bg-white text-[#E21B4D] font-semibold px-6 py-3 rounded-full shadow-md hover:bg-gray-100 transition-transform transform hover:scale-105">🔵 Create Account</a>
+        <a href="{{ url_for('login') }}" class="border border-white text-white px-6 py-3 rounded-full hover:bg-white hover:text-[#000B8D] transition-transform transform hover:scale-105">⚪ Sign In</a>
+      </div>
     </div>
-  </div>
+  </section>
+
+  <!-- Why GoGetJobs -->
+  <section class="py-20 bg-gradient-to-br from-[#f0f4ff] to-[#ffffff]">
+    <div class="max-w-7xl mx-auto px-6 text-center">
+      <h2 class="text-4xl font-bold mb-12" data-aos="fade-up">Why GoGetJobs?</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+
+        <div class="glass p-6 text-center transform transition hover:scale-105" data-aos="fade-up">
+          <img src="https://img.icons8.com/ios/50/diversity.png" alt="Inclusive" class="mb-4 mx-auto animate-bounce" />
+          <h3 class="text-xl font-semibold mb-2">Inclusive Opportunities</h3>
+          <p>Jobs for all backgrounds, skill levels, and life stages.</p>
+        </div>
+
+        <div class="glass p-6 text-center transform transition hover:scale-105" data-aos="fade-up" data-aos-delay="100">
+          <img src="https://img.icons8.com/ios/50/globe--v1.png" alt="Global" class="mb-4 mx-auto" />
+          <h3 class="text-xl font-semibold mb-2">Global & Remote Friendly</h3>
+          <p>Apply to jobs locally or worldwide—on your terms.</p>
+        </div>
+
+        <div class="glass p-6 text-center transform transition hover:scale-105" data-aos="fade-up" data-aos-delay="200">
+          <img src="https://img.icons8.com/ios/50/artificial-intelligence.png" alt="Smart Matching" class="mb-4 mx-auto" />
+          <h3 class="text-xl font-semibold mb-2">Smart Matching</h3>
+          <p>Our algorithm recommends jobs tailored to your skills and goals.</p>
+        </div>
+
+        <div class="glass p-6 text-center transform transition hover:scale-105" data-aos="fade-up" data-aos-delay="300">
+          <img src="https://img.icons8.com/ios/50/resume.png" alt="ATS Optimization" class="mb-4 mx-auto" />
+          <h3 class="text-xl font-semibold mb-2">CV & ATS Optimization</h3>
+          <p>Get your resume checked and improved to pass ATS easily.</p>
+        </div>
+
+        <div class="glass p-6 text-center transform transition hover:scale-105" data-aos="fade-up" data-aos-delay="400">
+          <img src="https://img.icons8.com/ios/50/robot-2.png" alt="Auto Apply" class="mb-4 mx-auto" />
+          <h3 class="text-xl font-semibold mb-2">Automated Applications</h3>
+          <p>Let our system apply to jobs on your behalf while you focus on interviews.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="py-20 bg-[#f9fafb]">
+    <div class="max-w-4xl mx-auto px-6">
+      <h2 class="text-3xl font-bold text-center mb-12" data-aos="fade-up">How It Works</h2>
+      <div class="space-y-8">
+        <div class="flex items-start" data-aos="fade-up">
+          <span class="text-[#E21B4D] font-bold text-xl mr-4">1.</span>
+          <p><strong>Create a Free Account</strong><br>Build your profile in minutes.</p>
+        </div>
+        <div class="flex items-start" data-aos="fade-up" data-aos-delay="100">
+          <span class="text-[#E21B4D] font-bold text-xl mr-4">2.</span>
+          <p><strong>Explore Jobs or Let Them Find You</strong><br>Get matched with roles that fit you.</p>
+        </div>
+        <div class="flex items-start" data-aos="fade-up" data-aos-delay="200">
+          <span class="text-[#E21B4D] font-bold text-xl mr-4">3.</span>
+          <p><strong>Apply & Chat Directly</strong><br>Send applications and message recruiters in one place.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="bg-gradient-to-r from-[#e0e7ff] to-[#fef3f3] py-20">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <h2 class="text-3xl font-bold mb-10" data-aos="fade-up">What Our Users Say</h2>
+      <blockquote class="italic text-lg mb-6" data-aos="fade-up">“GoGetJobs helped me land a remote marketing role in just two weeks!” – <strong>Alex, USA</strong></blockquote>
+      <blockquote class="italic text-lg" data-aos="fade-up" data-aos-delay="100">“The diversity of listings and easy filters made my job hunt so much easier.” – <strong>Priya, India</strong></blockquote>
+    </div>
+  </section>
+
+  <!-- CTA Repeat -->
+  <section class="py-20 bg-[#000B8D] text-white text-center">
+    <h2 class="text-3xl font-bold mb-6" data-aos="zoom-in">Ready to find your next job?</h2>
+    <div class="space-x-4">
+      <a href="#" class="bg-[#FFD300] text-[#000B8D] font-semibold px-6 py-3 rounded-full shadow hover:opacity-90 transition-transform transform hover:scale-105">🔵 Create Your Free Account</a>
+      <a href="#" class="border border-white text-white px-6 py-3 rounded-full hover:bg-white hover:text-[#E21B4D] transition-transform transform hover:scale-105">⚪ Sign In</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-[#1f2937] text-white py-10">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm space-y-4 md:space-y-0">
+      <p>&copy; 2025 GoGetJobs. All rights reserved.</p>
+      <div class="flex space-x-4">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+        <a href="#" class="hover:underline">FAQs</a>
+        <a href="#" class="hover:underline">Privacy</a>
+      </div>
+      <div class="flex space-x-3">
+        <a href="#"><img src="https://img.icons8.com/ios-filled/24/ffffff/facebook.png" alt="FB" /></a>
+        <a href="#"><img src="https://img.icons8.com/ios-filled/24/ffffff/twitter.png" alt="Twitter" /></a>
+        <a href="#"><img src="https://img.icons8.com/ios-filled/24/ffffff/linkedin.png" alt="LinkedIn" /></a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>AOS.init({ duration: 1000, once: true });</script>
 </body>
 </html>
