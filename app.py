@@ -246,26 +246,28 @@ def dashboard():
 # ----------------------------
 # Jobs Page (Replaces Chat)
 # ----------------------------
-
 @app.route('/jobs', methods=['GET', 'POST'])
 def jobs():
     if 'user_id' not in session:
         return redirect('/login')
 
     user = User.query.get(session['user_id'])
-    if not user or not user.is_subscribed:
-        return redirect('/subscribe')
 
     # Get all job IDs the user has already applied to
     applied_job_ids = [app.job_id for app in user.applications]
 
-    # Fetch applied jobs
+    # Fetch jobs
     applied_jobs = Job.query.filter(Job.id.in_(applied_job_ids)).all()
-
-    # Fetch available jobs (not yet applied by this user)
     available_jobs = Job.query.filter(~Job.id.in_(applied_job_ids)).all()
 
-    return render_template('jobs.html', user=user, applied_jobs=applied_jobs, available_jobs=available_jobs)
+    return render_template(
+        'jobs.html',
+        user=user,
+        applied_jobs=applied_jobs,
+        available_jobs=available_jobs,
+        is_subscribed=user.is_subscribed
+    )
+
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
