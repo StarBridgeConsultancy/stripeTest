@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    #chat-box { height: 420px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    #chat-box div { margin: 5px 0; }
+    .user { text-align: right; }
+    .bot { text-align: left; color: #2c2b64; }
+  </style>
+</head>
+<body>
+  <div id="chat-box"></div>
+  <form id="chat-form">
+    <input type="text" id="user-message" placeholder="Ask job-related questions or paste job description..." style="width: 80%;">
+    <button type="submit">Send</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('chat-form');
+    const box = document.getElementById('chat-box');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('user-message');
+      const text = input.value.trim();
+      if (!text) return;
+
+      box.innerHTML += `<div class="user">${text}</div>`;
+      input.value = '';
+
+      const res = await fetch('/chatbot-api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      box.innerHTML += `<div class="bot">${data.reply}</div>`;
+      box.scrollTop = box.scrollHeight;
+    }
+  </script>
+</body>
+</html>

@@ -483,6 +483,113 @@ def profile():
 
     return render_template('profile.html', user=user)
 
+@app.route('/chatbot-ui')
+@login_required
+def chatbot_ui():
+    user = db.session.get(User, session['user_id'])
+    if not user or not user.is_subscribed:
+        return "Access Denied", 403
+    return render_template('chatbot.html', user=user)
+
+
+@app.route('/chatbot-api', methods=['POST'])
+@login_required
+def chatbot_api():
+    user = db.session.get(User, session['user_id'])
+    if not user or not user.is_subscribed:
+        return {"reply": "You must be a subscribed user."}, 403
+
+    data = request.get_json()
+    user_message = data.get("message", "").strip()
+
+    if not user_message:
+        return {"reply": "Please enter a job-related question or paste a job description."}
+
+    # Heuristic: detect pasted job descriptions
+    is_job_description = any(word in user_message.lower() for word in ['requirements', 'job description', 'we are looking for', 'qualifications']) or len(user_message) > 300
+
+    if is_job_description:
+        # Generate tailored CV with Gemini
+        prompt = f"""
+Generate a professional CV in plain text (not markdown or LaTeX). Use the user's profile below and tailor it to this job description:
+
+Job Description:
+{user_message}
+
+User Profile:
+Name: {user.full_name}
+Phone: {user.phone}
+Email: {user.email}
+Location: {user.city}, {user.country}
+Preferred Job Type: {user.preferred_job_type}
+Preferred Industries: {user.preferred_industries}
+Skills: {user.skills}
+Experience: {user.experience}
+Education: {user.education}
+
+Format:
+- Start with contact info
+- Then PROFESSIONAL SUMMARY
+- Then EXPERIENCE
+- Then SKILLS
+- Then EDUCATION
+- Use simple dashes (-) for bullet points.
+"""
+        try:
+            response = model.generate_content(prompt)
+            text_cv = response.text.strip()
+
+            # Convert CV to PDF
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.set_font("Arial", size=12)
+            for line in text_cv.split('\n'):
+                pdf.multi_cell(0, 10, line)
+            buffer = io.BytesIO()
+            pdf.output(buffer)
+            buffer.seek(0)
+
+            # Store the CV in session or temporary ID for retrieval
+            session['cv_pdf'] = buffer.read()
+            return {"reply": "✅ Your tailored CV is ready. [Click here to download it](/chatbot-download-cv)"}
+
+        except Exception as e:
+            return {"reply": f"❌ Gemini failed to generate your CV: {str(e)}"}
+
+    # Otherwise: handle general job questions
+    prompt = f"""
+You're a job assistant bot. Only respond to job-related questions.
+User Profile:
+Name: {user.full_name}
+Skills: {user.skills}
+Experience: {user.experience}
+Education: {user.education}
+
+User Message: {user_message}
+"""
+    try:
+        response = model.generate_content(prompt)
+        return {"reply": response.text.strip()}
+    except Exception as e:
+        return {"reply": f"Error: {str(e)}"}, 500
+
+
+@app.route('/chatbot-download-cv')
+@login_required
+def chatbot_download_cv():
+    pdf_data = session.get('cv_pdf')
+    if not pdf_data:
+        return "No CV generated yet.", 404
+
+    return send_file(
+        io.BytesIO(pdf_data),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name="Tailored_CV.pdf"
+    )
+
+
 
 
 @app.route('/admin/delete-job/<int:job_id>', methods=['POST'])
@@ -712,7 +819,7 @@ Description:
 Log in to your dashboard to apply or view more jobs.
 
 Best regards,
-Your Job Portal Team
+GoGetJobs Team
 """
             try:
                 mail.send(msg)
