@@ -686,6 +686,8 @@ Sincerely,
 
 def notify_users_about_new_job(job):
     """Sends an email to all users about a new job posting."""
+    from flask import current_app
+
     users = User.query.all()
     subject = f"New Job Posted: {job.title} at {job.company}"
     for user in users:
