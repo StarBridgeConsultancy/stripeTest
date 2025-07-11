@@ -317,6 +317,7 @@ def add_job():
 
         db.session.add(job)
         db.session.commit()
+        notify_users_about_new_job(job)
         flash('Job added and users notified!', 'success')
     
         return redirect(url_for('add_job'))
