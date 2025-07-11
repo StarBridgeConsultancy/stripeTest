@@ -1,42 +1,205 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <title>Job Chatbot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
   <style>
-    #chat-box { height: 420px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
-    #chat-box div { margin: 5px 0; }
-    .user { text-align: right; }
-    .bot { text-align: left; color: #2c2b64; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f4f4f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #chat-header {
+      background: #2c2b64;
+      color: white;
+      padding: 0.75rem 1rem;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #chat-close {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 1.25rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #chat-box {
+      flex-grow: 1;
+      background: white;
+      border-top: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+      padding: 1rem;
+      overflow-y: auto;
+      box-shadow: 0 2px 8px rgb(44 43 100 / 0.1);
+      scroll-behavior: smooth;
+    }
+
+    .user, .bot {
+      max-width: 80%;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      margin: 0.5rem 0;
+      display: inline-block;
+      clear: both;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+
+    .user {
+      background-color: #dfe7ff;
+      color: #000B8D;
+      float: right;
+      text-align: left;
+      border-bottom-right-radius: 0;
+    }
+
+    .bot {
+      background-color: #edeafc;
+      color: #2c2b64;
+      float: left;
+      text-align: left;
+      border-bottom-left-radius: 0;
+    }
+
+    form {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-top: 1px solid #ccc;
+      background-color: #f9f9fc;
+    }
+
+    input[type="text"] {
+      flex-grow: 1;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      border: 2px solid #E21B4D;
+      font-size: 1rem;
+      outline-offset: 2px;
+      transition: border-color 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: #000B8D;
+    }
+
+    button[type="submit"] {
+      background-color: #E21B4D;
+      color: white;
+      border: none;
+      padding: 0 1.25rem;
+      border-radius: 0.5rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      font-size: 1rem;
+    }
+
+    button[type="submit"]:hover {
+      background-color: #c21742;
+    }
+
+    a {
+      color: #E21B4D;
+      font-weight: 600;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <div id="chat-box"></div>
-  <form id="chat-form">
-    <input type="text" id="user-message" placeholder="Ask job-related questions or paste job description..." style="width: 80%;">
-    <button type="submit">Send</button>
+  <!-- Header -->
+  <div id="chat-header">
+    Job Assistant
+    <button id="chat-close" aria-label="Close Chat">×</button>
+  </div>
+
+  <!-- Chat messages -->
+  <div id="chat-box" aria-live="polite" aria-label="Chat messages"></div>
+
+  <!-- Input form -->
+  <form id="chat-form" aria-label="Chat input form">
+    <input
+      type="text"
+      id="user-message"
+      placeholder="Paste job description or ask a job-related question..."
+      aria-required="true"
+      autocomplete="off"
+    />
+    <button type="submit" aria-label="Send message">Send</button>
   </form>
 
+  <!-- Script -->
   <script>
     const form = document.getElementById('chat-form');
     const box = document.getElementById('chat-box');
+    const input = document.getElementById('user-message');
+    const closeBtn = document.getElementById('chat-close');
 
     form.onsubmit = async (e) => {
       e.preventDefault();
-      const input = document.getElementById('user-message');
       const text = input.value.trim();
       if (!text) return;
 
       box.innerHTML += `<div class="user">${text}</div>`;
       input.value = '';
-
-      const res = await fetch('/chatbot-api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
-      });
-      const data = await res.json();
-      box.innerHTML += `<div class="bot">${data.reply}</div>`;
       box.scrollTop = box.scrollHeight;
-    }
+
+      try {
+        const res = await fetch('/chatbot-api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',  // ✅ Send login session cookie
+          body: JSON.stringify({ message: text })
+        });
+
+        if (!res.ok) {
+          box.innerHTML += `<div class="bot text-red-600 font-semibold">❌ Something went wrong. Please try again.</div>`;
+        } else {
+          const data = await res.json();
+          const cleanedReply = data.reply
+            .replace(/\*/g, '')
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+          box.innerHTML += `<div class="bot">${cleanedReply}</div>`;
+        }
+      } catch (err) {
+        box.innerHTML += `<div class="bot text-red-600 font-semibold">⚠️ Network error. Please check your connection.</div>`;
+      }
+
+      box.scrollTop = box.scrollHeight;
+    };
+
+    closeBtn.onclick = () => {
+      if (window.parent) {
+        const container = window.parent.document.getElementById('chatbot-container');
+        if (container) container.style.display = 'none';
+      }
+    };
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        if (window.parent) {
+          const container = window.parent.document.getElementById('chatbot-container');
+          if (container) container.style.display = 'none';
+        }
+      }
+    });
   </script>
 </body>
 </html>

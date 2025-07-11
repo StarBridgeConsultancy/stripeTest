@@ -2,12 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard – GoGetJobs</title>
+  <title>GoGetJobs Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -20,7 +18,9 @@
   </style>
 </head>
 <body class="bg-gradient-to-br from-white via-[#f4f4f9] to-[#e2e8f0] min-h-screen px-4 py-6 text-gray-900">
-  <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-200" data-aos="fade-up">
+
+  <!-- Main Dashboard Content -->
+  <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-extrabold text-[#000B8D]">Welcome, {{ user.full_name or user.email }}</h1>
       <a href="{{ url_for('logout') }}" class="text-sm text-red-600 hover:underline font-medium">Logout</a>
@@ -40,8 +40,7 @@
         <a href="{{ url_for('profile') }}" class="bg-[#000B8D] text-white px-4 py-3 rounded-lg hover:opacity-90 transition font-semibold">Update Profile</a>
         <a href="{{ url_for('jobs') }}" class="bg-[#E21B4D] text-white px-4 py-3 rounded-lg hover:opacity-90 transition font-semibold">Browse Jobs</a>
         <a href="{{ url_for('dashboard') }}" class="bg-[#FFD300] text-[#000B8D] px-4 py-3 rounded-lg hover:opacity-90 transition font-semibold">My Applications</a>
-        <a href="{{ url_for('generate_cv') }}" class="btn btn-primary">Download My CV (PDF)</a>
-
+        <a href="{{ url_for('generate_cv') }}" class="bg-[#2c2b64] text-white px-4 py-3 rounded-lg hover:bg-[#1e1c50] transition font-semibold">Download My CV (PDF)</a>
       </div>
 
       <div>
@@ -56,53 +55,59 @@
         </ul>
       </div>
     {% endif %}
-    {% if session['user_id'] %}
-  {% set user = db.session.get(User, session['user_id']) %}
-  {% if user and user.is_subscribed %}
-    <div id="chatbot-button" onclick="toggleChatbot()">💬</div>
-    <div id="chatbot-container" style="display: none;">
-      <iframe src="{{ url_for('chatbot_ui') }}" frameborder="0"></iframe>
-    </div>
-  {% endif %}
-{% endif %}
-
-<style>
-#chatbot-button {
-  position: fixed;
-  bottom: 25px;
-  right: 25px;
-  background: #2c2b64;
-  color: white;
-  padding: 12px 16px;
-  border-radius: 50px;
-  cursor: pointer;
-  z-index: 1000;
-}
-#chatbot-container {
-  position: fixed;
-  bottom: 80px;
-  right: 25px;
-  width: 350px;
-  height: 500px;
-  background: white;
-  border: 1px solid #ccc;
-  z-index: 999;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-#chatbot-container iframe {
-  width: 100%;
-  height: 100%;
-}
-</style>
-
-<script>
-function toggleChatbot() {
-  const bot = document.getElementById('chatbot-container');
-  bot.style.display = (bot.style.display === 'none') ? 'block' : 'none';
-}
-</script>
-
   </div>
-  <script>AOS.init();</script>
+
+  <!-- ✅ Floating Animated Bot Message -->
+  <div id="chatbot-message" class="fixed bottom-[95px] right-[90px] bg-white text-[#2c2b64] px-4 py-2 rounded-lg shadow-lg border border-gray-300 animate-bounce z-50 text-sm font-medium max-w-[250px]">
+    Paste the job you're applying for,<br>and I’ll generate a CV for you!
+  </div>
+
+  <!-- ✅ Floating Chatbot Button -->
+  <div id="chatbot-button" onclick="toggleChatbot()" class="fixed bottom-[25px] right-[25px] bg-[#2c2b64] text-white px-4 py-3 rounded-full shadow-lg cursor-pointer z-50 text-lg font-bold hover:bg-[#1e1c50] transition">
+    💬
+  </div>
+
+  <!-- ✅ Chatbot Container with Iframe -->
+  <div id="chatbot-container" style="display: none;">
+    <iframe src="{{ url_for('chatbot_ui') }}" frameborder="0"></iframe>
+  </div>
+
+  <!-- ✅ Custom Styling for Chatbot -->
+  <style>
+    #chatbot-container {
+      position: fixed;
+      bottom: 90px;
+      right: 25px;
+      width: 360px;
+      height: 520px;
+      background: white;
+      border: 1px solid #ccc;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+    #chatbot-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+
+  <!-- ✅ JavaScript to Handle Toggle and Animation -->
+  <script>
+    function toggleChatbot() {
+      const bot = document.getElementById('chatbot-container');
+      const tip = document.getElementById('chatbot-message');
+      bot.style.display = (bot.style.display === 'none') ? 'block' : 'none';
+      if (tip) tip.style.display = 'none'; // Hide tip when opened
+    }
+
+    // Auto-hide tip after 8 seconds
+    setTimeout(() => {
+      const tip = document.getElementById('chatbot-message');
+      if (tip) tip.style.display = 'none';
+    }, 8000);
+  </script>
 </body>
 </html>
