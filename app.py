@@ -9,6 +9,28 @@ from wtforms import StringField, TextAreaField, SelectField, SubmitField
 from wtforms.validators import DataRequired, URL, Optional
 from flask import flash
 from datetime import datetime, timezone, timedelta
+from wtforms.validators import Email
+from werkzeug.utils import secure_filename
+from flask import make_response
+from flask import render_template, make_response
+from xhtml2pdf import pisa
+from io import BytesIO
+from flask import Response
+from flask import send_file
+from fpdf import FPDF
+import io
+from flask import send_file
+import smtplib  # or use Flask-Mail
+from email.message import EmailMessage
+from io import BytesIO
+from flask_login import login_required
+from flask_login import LoginManager, current_user
+import google.generativeai as genai
+from flask_mail import Mail, Message
+from wtforms.validators import DataRequired, Email
+
+
+
 
 
 
@@ -19,10 +41,28 @@ from datetime import datetime, timezone, timedelta
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure key in production
 
-
 # Configure PostgreSQL or fallback to SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://myapp_r6n3_user:H6R5XiPx4EL8gevrbW4ySEjZIhf72U3y@dpg-d1i13dodl3ps73b1ktc0-a.oregon-postgres.render.com/myapp_r6n3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+API_KEY = "AIzaSyA_84rmTgnFdvzjpFdB8p3xYoziCVbcEic"  # Be cautious with hardcoded keys
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'starbridgeconsultancy@gmail.com'        # Use your real email
+app.config['MAIL_PASSWORD'] = 'gooh wfay uxur yhsa'           # Your app-specific password
+
+# ✅ Then: Initialize Flask-Mail
+mail = Mail(app)
+
+app.config["UPLOAD_FOLDER"] = "uploads"
+ALLOWED_EXTENSIONS = {"pdf", "txt"}
+
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+# Gemini setup
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-2.0-flash")
+chat = model.start_chat()
 
 # Stripe configuration
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
@@ -30,6 +70,14 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'  # or your actual login route
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))  # assuming you're using SQLAlchemy
 
 # ----------------------------
 # Models
@@ -52,9 +100,9 @@ class User(db.Model):
     skills = db.Column(db.Text)
     experience = db.Column(db.Text)
     education = db.Column(db.Text)
+    
 
     applications = db.relationship('JobApplication', back_populates='user', lazy=True, cascade='all, delete-orphan')
-
 
 
 
@@ -67,15 +115,15 @@ class Job(db.Model):
     industry = db.Column(db.String(255))
     location_type = db.Column(db.String(50))
     link = db.Column(db.String(500), nullable=False)
+    email = db.Column(db.String(255))  # <--- NEW FIELD
     description = db.Column(db.Text)
-    
-    posted_date = db.Column(db.DateTime, default=datetime.utcnow)  # When job was posted
+    posted_date = db.Column(db.DateTime, default=datetime.utcnow)
     expiry_days = db.Column(db.Integer, default=30)
 
     applications = db.relationship(
-        'JobApplication', 
-        back_populates='job', 
-        lazy=True, 
+        'JobApplication',
+        back_populates='job',
+        lazy=True,
         cascade='all, delete-orphan'
     )
 
@@ -93,6 +141,7 @@ class JobForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     company = StringField('Company', validators=[DataRequired()])
     location = StringField('Location', validators=[Optional()])
+    email = StringField('Application Email', validators=[Optional(), Email()])
     country = SelectField(
         'Country', 
         choices=[
@@ -113,7 +162,110 @@ class JobForm(FlaskForm):
     description = TextAreaField('Description', validators=[Optional()])
     submit = SubmitField('Add Job')
 
+class CVPDF(FPDF):
+    def header(self):
+        # Header with user name and contact
+        self.set_font("Helvetica", "B", 18)
+        self.set_text_color(0, 51, 102)
+        self.cell(0, 10, self.name, ln=True)
 
+        self.set_font("Helvetica", "", 10)
+        self.set_text_color(0)
+        if self.location:
+            self.cell(0, 6, self.location, ln=True)
+        if self.phone:
+            self.cell(0, 6, f"Phone: {self.phone}", ln=True)
+        if self.email:
+            self.cell(0, 6, f"Email: {self.email}", ln=True, link=f"mailto:{self.email}")
+        if self.linkedin:
+            self.set_text_color(0, 102, 204)
+            self.cell(0, 6, f"LinkedIn: {self.linkedin}", ln=True, link=self.linkedin)
+        self.set_text_color(0)
+        self.ln(5)
+
+    def section_title(self, title):
+        self.set_fill_color(224, 224, 224)
+        self.set_text_color(0, 51, 102)
+        self.set_font("Helvetica", "B", 11)
+        self.cell(0, 8, f"  {title}", ln=True, fill=True)
+        self.set_text_color(0)
+        self.set_font("Helvetica", "", 10)
+
+    def section_body(self, text):
+        if text:
+            self.multi_cell(0, 6, text.strip())
+            self.ln(2)
+
+        
+    def generate_email_body(user, job):
+     return f"""Dear {job.company_name or 'Hiring Manager'},
+
+I am excited to apply for the {job.title} position listed by your company.
+
+My background in {user.profession or 'relevant field'} and experience in similar roles make me a great candidate for this opportunity. I have attached my CV for your review.
+
+Thank you for your time and consideration. I look forward to the possibility of working with your team.
+
+Sincerely,
+{user.full_name}
+Email: {user.email}
+"""
+           
+
+@app.route("/styled-cv")
+def styled_cv():
+    if 'user_id' not in session:
+        return redirect('/login')
+    
+    user = db.session.get(User, session['user_id'])
+
+    if not user:
+        flash("User not found", "error")
+        return redirect('/dashboard')
+
+    pdf = CVPDF()
+    pdf.name = user.full_name or ""
+    pdf.location = f"{user.city}, {user.country}" if user.city and user.country else ""
+    pdf.phone = user.phone or ""
+    pdf.email = user.email or ""
+    pdf.linkedin = ""  # Optional: Add user.linkedin if you store it
+
+    pdf.add_page()
+
+    # Professional Summary (use experience field or separate summary if you add one later)
+    if user.experience:
+        pdf.section_title("Professional Summary")
+        pdf.section_body(user.experience)
+
+    # Left Column Data (skills, preferred industries, etc.)
+    if user.skills:
+        pdf.section_title("Skills")
+        pdf.section_body(user.skills)
+
+    if user.preferred_industries:
+        pdf.section_title("Preferred Industries")
+        pdf.section_body(user.preferred_industries)
+
+    if user.preferred_job_type:
+        pdf.section_title("Preferred Job Type")
+        pdf.section_body(user.preferred_job_type)
+
+    # Right Column Data (Education & Experience)
+    if user.education:
+        pdf.section_title("Education")
+        pdf.section_body(user.education)
+
+    # Save to buffer
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"{user.full_name or 'cv'}_CV.pdf"
+    )
 
 
 
@@ -205,7 +357,7 @@ def subscribe():
     if 'user_id' not in session:
         return redirect('/login')
 
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
 
     checkout_session = stripe.checkout.Session.create(
         customer_email=user.email,
@@ -227,7 +379,8 @@ def subscribe():
 @app.route('/payment-success')
 def payment_success():
     if 'user_id' in session:
-        user = User.query.get(session['user_id'])
+        user = db.session.get(User, session['user_id'])
+
         user.is_subscribed = True
         db.session.commit()
     return redirect('/jobs')
@@ -240,7 +393,8 @@ def payment_cancel():
 def dashboard():
     if 'user_id' not in session:
         return redirect('/login')
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
+
     return render_template('dashboard.html', user=user)
 
 # ----------------------------
@@ -251,30 +405,63 @@ def jobs():
     if 'user_id' not in session:
         return redirect('/login')
 
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
 
-    # Get all job IDs the user has already applied to
+    if not user:
+        flash("User not found.", "error")
+        return redirect('/login')
+
+    # Get jobs the user has already applied to
     applied_job_ids = [app.job_id for app in user.applications]
 
-    # Fetch jobs
-    applied_jobs = Job.query.filter(Job.id.in_(applied_job_ids)).all()
+    # User preferences
+    user_skills = set(map(str.strip, user.skills.lower().split(','))) if user.skills else set()
+    user_industries = set(map(str.strip, user.preferred_industries.lower().split(','))) if user.preferred_industries else set()
+    user_country = user.country.lower() if user.country else ""
+
+    # Get all jobs the user hasn't applied to
     available_jobs = Job.query.filter(~Job.id.in_(applied_job_ids)).all()
+
+    def match_job(job):
+        job_industry = (job.industry or '').strip().lower()
+        job_location_type = (job.location_type or '').strip().lower()
+        job_country = (job.country or '').strip().lower()
+
+        # 1. Job must match user's preferred industries
+        if job_industry not in user_industries:
+            return False
+
+        # 2. Show remote or international jobs to everyone
+        if job_location_type in ['remote', 'international']:
+            return True
+
+        # 3. Show local jobs (same country)
+        if job_country == user_country:
+            return True
+
+        # 4. Otherwise, don't show job
+        return False
+
+    # Apply filter
+    filtered_jobs = [job for job in available_jobs if match_job(job)]
+
+    # Get jobs the user already applied to
+    applied_jobs = Job.query.filter(Job.id.in_(applied_job_ids)).all()
 
     return render_template(
         'jobs.html',
         user=user,
         applied_jobs=applied_jobs,
-        available_jobs=available_jobs,
+        available_jobs=filtered_jobs,
         is_subscribed=user.is_subscribed
     )
-
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'user_id' not in session:
         return redirect('/login')
 
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
 
     if request.method == 'POST':
         user.full_name = request.form.get('full_name')
@@ -295,7 +482,6 @@ def profile():
 
 
 
-
 @app.route('/admin/delete-job/<int:job_id>', methods=['POST'])
 def delete_job(job_id):
     job = Job.query.get_or_404(job_id)
@@ -303,7 +489,6 @@ def delete_job(job_id):
     db.session.commit()
     flash('Job deleted successfully', 'success')
     return redirect(url_for('add_job'))  # Redirect back to admin page (add_job route)
-
 
 @app.route('/apply', methods=['POST'])
 def apply():
@@ -316,27 +501,222 @@ def apply():
         flash("Invalid job selection.", "error")
         return redirect('/jobs')
 
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     job = Job.query.get(job_id)
 
     if not job:
         flash("Job does not exist.", "error")
         return redirect('/jobs')
 
-    # Check if application already exists
     existing_application = JobApplication.query.filter_by(user_id=user.id, job_id=job.id).first()
-    if not existing_application:
-        new_application = JobApplication(user_id=user.id, job_id=job.id)
-        db.session.add(new_application)
-        db.session.commit()
-        flash("Applied successfully!", "success")
-        # Trigger any external auto-apply logic here if needed
-    else:
+    if existing_application:
         flash("You have already applied to this job.", "info")
+        return redirect('/jobs')
+
+    # Save the application
+    new_application = JobApplication(user_id=user.id, job_id=job.id)
+    db.session.add(new_application)
+    db.session.commit()
+    flash("Applied successfully!", "success")
+
+    # --- Step 1: Generate CV ---
+    cv_pdf = generate_cv(user)  # should return a BytesIO object
+
+    # --- Step 2: Generate Email Body ---
+    email_body = generate_email_body(user, job)
+
+    # --- Step 3: Send Email with Flask-Mail ---
+    try:
+        msg = Message(
+            subject=f"Job Application for {job.title}",
+            recipients=[job.email],
+            body=email_body,
+            reply_to=user.email  # important: so employer replies to applicant, not system
+        )
+
+        msg.attach("CV.pdf", "application/pdf", cv_pdf.getvalue())
+
+        mail.send(msg)
+        flash("Email sent to the employer!", "success")
+    except Exception as e:
+        print("Email sending failed:", e)
+        flash("Failed to send application email.", "error")
 
     return redirect('/jobs')
+@app.route('/generate-cv')
+def generate_cv():
+    if 'user_id' not in session:
+        return redirect('/login')
 
-# ----------------------------
+    user = db.session.get(User, session['user_id'])
+
+    if not user:
+        flash("User not found", "error")
+        return redirect('/dashboard')
+
+    # Gemini prompt
+    prompt = f"""
+Create a clean, modern, ATS-friendly CV in plain text only — no markdown, no asterisks, and no LaTeX. 
+Use uppercase section headers (e.g., PROFESSIONAL SUMMARY), simple bullet points (like hyphens), and consistent spacing.
+
+Format and organize it as follows:
+
+Full Name: {user.full_name}
+Phone: {user.phone}
+Email: {user.email}
+Address: {user.address}, {user.city}, {user.country}
+
+Professional Summary:
+Write a concise 2–3 sentence summary that highlights the user's experience, goals, and key strengths.
+
+Career Preferences:
+Job Type: {user.preferred_job_type}
+Industries: {user.preferred_industries}
+
+Experience:
+{user.experience}
+
+Skills:
+{user.skills}
+
+Education:
+{user.education}
+
+Avoid symbols like asterisks, hashtags, or markdown-style headers. The CV should be ATS-parsable.
+"""
+
+    try:
+        response = model.generate_content(prompt)
+        import re
+
+        # Clean raw text
+        cv_text = response.text.strip()
+
+        # Remove any repeated personal details
+        personal_lines = [
+            user.full_name or "",
+            user.phone or "",
+            user.email or "",
+            f"{user.address}, {user.city}, {user.country}"
+        ]
+        for line in personal_lines:
+            cv_text = re.sub(re.escape(line), '', cv_text, flags=re.IGNORECASE)
+
+        # Remove markdown formatting
+        cv_text = re.sub(r'\*+|\#+', '', cv_text)
+
+        # PDF class with formatting
+        class CVPDF(FPDF):
+            def header(self):
+                self.set_font("Helvetica", "B", 18)
+                self.set_text_color(0, 51, 102)
+                self.cell(0, 10, user.full_name or "CV", ln=True)
+
+                self.set_font("Helvetica", "", 10)
+                self.set_text_color(0)
+                location = f"{user.city}, {user.country}" if user.city and user.country else ""
+                if location:
+                    self.cell(0, 6, location, ln=True)
+                if user.phone:
+                    self.cell(0, 6, f"Phone: {user.phone}", ln=True)
+                if user.email:
+                    self.cell(0, 6, f"Email: {user.email}", ln=True, link=f"mailto:{user.email}")
+                self.ln(5)
+
+            def section_title(self, title):
+                self.set_fill_color(224, 224, 224)
+                self.set_text_color(0, 51, 102)
+                self.set_font("Helvetica", "B", 11)
+                self.cell(0, 8, f"  {title}", ln=True, fill=True)
+                self.set_text_color(0)
+                self.set_font("Helvetica", "", 10)
+
+            def section_body(self, text):
+                if text:
+                    self.multi_cell(0, 6, text.strip())
+                    self.ln(2)
+
+        pdf = CVPDF()
+        pdf.add_page()
+
+        # Try to split by sections like "PROFESSIONAL SUMMARY:"
+        section_titles = re.findall(r'([A-Z][A-Z ]+):', cv_text)
+        sections = re.split(r'[A-Z][A-Z ]+:\s*\n?', cv_text)
+
+        if section_titles and len(sections) > 1:
+            for title, body in zip(section_titles, sections[1:]):
+                pdf.section_title(title.strip())
+                pdf.section_body(body.strip())
+        else:
+            # fallback: render all
+            pdf.section_body(cv_text)
+
+        # Output to memory
+        pdf_bytes = pdf.output(dest='S').encode('latin1')
+        buffer = io.BytesIO(pdf_bytes)
+
+        return send_file(
+            buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{user.full_name or 'CV'}_Gemini_Styled.pdf"
+        )
+
+    except Exception as e:
+        return f"Error generating CV with Gemini: {e}"
+    
+
+def generate_email_body(user, job):
+    return f"""
+Dear {job.company} Hiring Team,
+
+I hope this message finds you well.
+
+My name is {user.full_name}, and I am writing to express my strong interest in the position of {job.title} at your esteemed organization. I believe my skills and experience make me a great fit for this opportunity.
+
+Please find my CV attached for your consideration. I look forward to the opportunity to contribute to your team.
+
+Sincerely,  
+{user.full_name}  
+{user.email}
+"""
+
+
+def notify_users_about_new_job(job):
+    """Sends an email to all users about a new job posting."""
+    users = User.query.all()
+    subject = f"New Job Posted: {job.title} at {job.company}"
+    for user in users:
+        if user.email:  # ensure email exists
+            msg = Message(subject, recipients=[user.email])
+            msg.body = f"""
+Hi {user.full_name},
+
+A new job has just been posted on the platform:
+
+Title: {job.title}
+Company: {job.company}
+Location: {job.location}, {job.country}
+Industry: {job.industry}
+Type: {job.location_type}
+Link: {job.link}
+
+Description:
+{job.description}
+
+Log in to your dashboard to apply or view more jobs.
+
+Best regards,
+Your Job Portal Team
+"""
+            try:
+                mail.send(msg)
+            except Exception as e:
+                print(f"Error sending to {user.email}: {e}")
+
+
+
+
 
 if __name__ == '__main__':
     with app.app_context():
@@ -344,3 +724,4 @@ if __name__ == '__main__':
         cleanup_expired_jobs()
     app.run(debug=True)
     
+

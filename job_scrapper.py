@@ -144,8 +144,14 @@ def fetch_remotive_jobs():
             company = job.get('company_name', '').strip()
             location = job.get('candidate_required_location', 'Remote').strip()
             link = job.get('url', '').strip()
+            description = job.get('description', '').strip()
             industry = 'IT'
             location_type = 'Remote' if 'remote' in location.lower() else 'Onsite'
+
+            # Try extracting email from description (optional and error-prone)
+            import re
+            email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', description)
+            email = email_match.group(0) if email_match else None
 
             if title and company and link:
                 all_scraped_links.add(link)
@@ -158,6 +164,8 @@ def fetch_remotive_jobs():
                         industry=industry,
                         location_type=location_type,
                         link=link,
+                        email=email,  # Add email here
+                        description=description,
                         posted_date=datetime.utcnow(),
                         expiry_days=30
                     )
@@ -167,6 +175,60 @@ def fetch_remotive_jobs():
         logger.info(f"✅ Remotive API Jobs Added: {added}")
     except Exception as e:
         logger.error(f"Error fetching Remotive API Jobs: {e}")
+
+def fetch_craigslist_jobs():
+    logger.info("🔍 Fetching Craigslist Jobs...")
+    base_url = "https://newyork.craigslist.org/search/sof"  # Example for NYC Software Jobs
+    driver = get_driver()
+    added = 0
+
+    try:
+        driver.get(base_url)
+        WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".result-info")))
+
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        listings = soup.select(".result-info")
+
+        for post in listings:
+            title_elem = post.find("a", class_="result-title")
+            date_elem = post.find("time")
+            link = title_elem['href'] if title_elem else None
+
+            if link:
+                driver.get(link)
+                time.sleep(2)
+                page_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                description = page_soup.find("section", id="postingbody").get_text(strip=True)
+                title = page_soup.find("span", id="titletextonly").text.strip()
+                email_elem = page_soup.select_one("a.mailapp")
+
+                email = email_elem.text if email_elem else None
+                company = "Craigslist Poster"
+
+                if not Job.query.filter_by(link=link).first():
+                    job = Job(
+                        title=title,
+                        company=company,
+                        location="USA",
+                        industry="IT",
+                        location_type="Remote" if "remote" in description.lower() else "Onsite",
+                        link=link,
+                        email=email,
+                        description=description[:500],
+                        posted_date=datetime.utcnow(),
+                        expiry_days=30
+                    )
+                    db.session.add(job)
+                    added += 1
+
+        db.session.commit()
+        logger.info(f"✅ Craigslist Jobs Added: {added}")
+    except Exception as e:
+        logger.error(f"❌ Error fetching Craigslist jobs: {e}")
+    finally:
+        driver.quit()
+
+
 def fetch_concentrix_jobs():
     logger.info("🔍 Fetching Concentrix Jobs (API)...")
     base_url = "https://apply.concentrix.com/api/content/search-results"
@@ -328,6 +390,9 @@ def run_all_scrapers():
         time.sleep(random.uniform(1.5, 3.0))
 
         fetch_concentrix_jobs()
+        time.sleep(random.uniform(1.5, 3.0))
+
+        fetch_craigslist_jobs()
 
         delete_expired_jobs()
         delete_jobs_not_found()

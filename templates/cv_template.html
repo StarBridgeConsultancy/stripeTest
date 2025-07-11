@@ -1,0 +1,37 @@
+<!-- templates/cv_edit_preview.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CV Generator</title>
+</head>
+<body>
+    <h2>Edit and Generate Your CV</h2>
+    <form method="POST">
+        <label>Full Name:</label><br>
+        <input type="text" name="full_name" value="{{ user.full_name }}"><br><br>
+
+        <label>Phone:</label><br>
+        <input type="text" name="phone" value="{{ user.phone }}"><br><br>
+
+        <label>Address:</label><br>
+        <input type="text" name="address" value="{{ user.address }}"><br><br>
+
+        <label>City:</label><br>
+        <input type="text" name="city" value="{{ user.city }}"><br><br>
+
+        <label>Country:</label><br>
+        <input type="text" name="country" value="{{ user.country }}"><br><br>
+
+        <label>Skills:</label><br>
+        <textarea name="skills">{{ user.skills }}</textarea><br><br>
+
+        <label>Education:</label><br>
+        <textarea name="education">{{ user.education }}</textarea><br><br>
+
+        <label>Experience:</label><br>
+        <textarea name="experience">{{ user.experience }}</textarea><br><br>
+
+        <button type="submit">Generate CV as PDF</button>
+    </form>
+</body>
+</html>

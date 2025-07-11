@@ -3,6 +3,8 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SelectField, SubmitField
 from wtforms.validators import DataRequired, URL, Optional
 from app import db, Job
+from app import notify_users_about_new_job
+
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 # Setup a secret key for CSRF protection
@@ -40,7 +42,10 @@ def add_job():
             )
             db.session.add(new_job)
             db.session.commit()
-            flash('Job added successfully!', 'success')
+            notify_users_about_new_job(new_job)
+
+            flash('Job added and users notified!', 'success')
+            return redirect(url_for('admin.add_job')) 
             return redirect(url_for('add_job'))
 
     return render_template('admin_add_job.html', form=form)
