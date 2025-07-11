@@ -42,6 +42,7 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure key in production
 
 # Configure PostgreSQL or fallback to SQLite
+app.config['MAIL_DEFAULT_SENDER'] = 'starbridgeconsultancy@gmail.com'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://myapp_r6n3_user:H6R5XiPx4EL8gevrbW4ySEjZIhf72U3y@dpg-d1i13dodl3ps73b1ktc0-a.oregon-postgres.render.com/myapp_r6n3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 API_KEY = "AIzaSyA_84rmTgnFdvzjpFdB8p3xYoziCVbcEic"  # Be cautious with hardcoded keys
