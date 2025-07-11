@@ -317,7 +317,8 @@ def add_job():
 
         db.session.add(job)
         db.session.commit()
-        flash('Job added successfully!', 'success')
+        flash('Job added and users notified!', 'success')
+    
         return redirect(url_for('add_job'))
     return render_template('admin.html', form=form)
 
