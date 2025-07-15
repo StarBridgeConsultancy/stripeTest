@@ -12,6 +12,8 @@ from flask_login import (
 )
 from flask_mail import Mail, Message
 from flask_wtf import FlaskForm
+from functools import wraps
+from flask import abort
 
 # ─── WTForms ────────────────────────────────────────────
 from wtforms import StringField, TextAreaField, SelectField, SubmitField
@@ -89,6 +91,7 @@ class User(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
     is_subscribed = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)
 
     # Profile Info
     full_name = db.Column(db.String(100))
@@ -251,6 +254,20 @@ class CVPDF(FPDF):
             self.multi_cell(0, 6, text.strip())
             self.ln(2)
 
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect('/login')
+        user = db.session.get(User, session['user_id'])
+        if not user or not user.is_admin:
+            abort(403)  # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # ─── Email Body Generator ───────────────────────────────
 
 def generate_email_body(user, job):
@@ -294,26 +311,45 @@ def cleanup_expired_jobs():
 
 # ─── Notification Utility ───────────────────────────────
 
-def notify_users_about_new_job(job):
-    users = User.query.all()
-    subject = f"New Job Posted: {job.title} at {job.company}"
+from sqlalchemy import or_, func
 
-    for user in users:
-        if user.email:
-            msg = Message(subject, recipients=[user.email])
-            msg.body = f"""
+def notify_users_about_new_job(job):
+    subject = f"New Job Posted: {job.title} at {job.company}"
+    job_industry = (job.industry or '').strip().lower()
+    job_title_keywords = set(map(str.strip, job.title.lower().split()))
+
+    # Prepare OR conditions for keyword match in skills
+    keyword_conditions = [
+        func.lower(User.skills).like(f"%{keyword}%")
+        for keyword in job_title_keywords
+    ]
+
+    matching_users = User.query.filter(
+        or_(
+            func.lower(User.preferred_industries).like(f"%{job_industry}%"),
+            *keyword_conditions
+        ),
+        User.experience.isnot(None)
+    ).all()
+
+    for user in matching_users:
+        if not user.email:
+            continue
+
+        msg = Message(subject, recipients=[user.email])
+        msg.body = f"""
 Hi {user.full_name},
 
 A new job has just been posted on the platform:
 
-Title: {job.title}
-Company: {job.company}
-Location: {job.location}, {job.country}
-Industry: {job.industry}
-Type: {job.location_type}
-Link: {job.link}
+🔹 Title: {job.title}
+🏢 Company: {job.company}
+📍 Location: {job.location}, {job.country}
+🏷️ Industry: {job.industry}
+💼 Type: {job.location_type}
+🔗 Link: {job.link}
 
-Description:
+📝 Description:
 {job.description}
 
 Log in to your dashboard to apply or view more jobs.
@@ -321,10 +357,12 @@ Log in to your dashboard to apply or view more jobs.
 Best regards,  
 GoGetJobs Team
 """
-            try:
-                mail.send(msg)
-            except Exception as e:
-                print(f"Error sending to {user.email}: {e}")
+        try:
+            mail.send(msg)
+        except Exception as e:
+            print(f"Error sending to {user.email}: {e}")
+
+
 # ─── Routes: Home & Auth ────────────────────────────────
 
 @app.route('/')
@@ -350,12 +388,24 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
+
+        # Look up the user
         user = User.query.filter_by(email=email, password=password).first()
+
         if user:
             session['user_id'] = user.id
-            return redirect('/jobs')
-        return "Invalid credentials"
+
+            # Check if the user is admin
+            if hasattr(user, 'is_admin') and user.is_admin:
+                return redirect('/admin/dashboard')
+            else:
+                return redirect('/jobs')
+
+        flash("Invalid credentials", "error")
+        return redirect('/login')
+
     return render_template('login.html')
+
 
 @app.route('/logout')
 def logout():
@@ -409,6 +459,7 @@ def profile():
 # ─── Routes: Job Management ─────────────────────────────
 
 @app.route('/admin/add-job', methods=['GET', 'POST'])
+@admin_required
 def add_job():
     form = JobForm()
     if form.validate_on_submit():
@@ -431,6 +482,7 @@ def add_job():
     return render_template('admin.html', form=form)
 
 @app.route('/admin/delete-job/<int:job_id>', methods=['POST'])
+@admin_required
 def delete_job(job_id):
     job = Job.query.get_or_404(job_id)
     db.session.delete(job)
@@ -455,7 +507,8 @@ def jobs():
     user_industries = set(map(str.strip, user.preferred_industries.lower().split(','))) if user.preferred_industries else set()
     user_country = user.country.lower() if user.country else ""
 
-    available_jobs = Job.query.filter(~Job.id.in_(applied_job_ids)).all()
+    available_jobs = Job.query.filter(~Job.id.in_(applied_job_ids)).order_by(Job.posted_date.desc()).all()
+
 
     def match_job(job):
         job_industry = (job.industry or '').strip().lower()
@@ -598,11 +651,99 @@ def subscribe():
 
 @app.route('/payment-success')
 def payment_success():
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    user = db.session.get(User, session['user_id'])
+    mode = request.args.get('mode')
+
+    if mode == 'subscription':
         user.is_subscribed = True
         db.session.commit()
-    return redirect('/jobs')
+
+        # Send subscription confirmation email
+        try:
+            msg = Message(
+                subject="Subscription Activated - GoGetJobs",
+                recipients=[user.email],
+                body=f"""
+Hi {user.full_name},
+
+🎉 Thank you for subscribing to GoGetJobs!
+
+Your subscription is now active. You have full access to exclusive job listings and premium features.
+
+Visit your dashboard to start exploring:
+https://yourdomain.com/dashboard
+
+If you have any questions or feedback, feel free to reach out to us.
+
+Best regards,  
+GoGetJobs Team
+"""
+            )
+            mail.send(msg)
+            flash("✅ Subscription successful. Confirmation email sent.", "success")
+        except Exception as e:
+            print(f"Subscription email failed: {e}")
+            flash("Subscription successful, but failed to send confirmation email.", "warning")
+
+        return redirect('/jobs')
+
+    elif mode == 'course':
+        course_id = request.args.get('course_id')
+        if not course_id:
+            flash("Course ID missing after payment.", "error")
+            return redirect('/courses')
+
+        course = Course.query.get(int(course_id))
+        if not course:
+            flash("Course not found.", "error")
+            return redirect('/courses')
+
+        existing = CourseRegistration.query.filter_by(user_id=user.id, course_id=course.id).first()
+        if existing:
+            flash("You are already registered for this course.", "info")
+            return redirect('/courses')
+
+        registration = CourseRegistration(user_id=user.id, course_id=course.id)
+        db.session.add(registration)
+        db.session.commit()
+
+        # Send course registration email
+        try:
+            msg = Message(
+                subject=f"Registration Confirmed: {course.title}",
+                recipients=[user.email],
+                body=f"""
+Hi {user.full_name},
+
+You have successfully registered for the course "{course.title}" offered by {course.academy}.
+
+📅 Start Date: {course.start_date}
+📅 End Date: {course.end_date}
+💰 Fee: ${course.fee:.2f}
+
+You can access the course here:
+{course.link or "No link provided"}
+
+Thanks for registering!
+
+— GoGetJobs Team
+"""
+            )
+            mail.send(msg)
+            flash("✅ Registered successfully. Confirmation email sent.", "success")
+        except Exception as e:
+            print(f"Email error: {e}")
+            flash("Registered, but failed to send confirmation email.", "warning")
+
+        return redirect('/courses')
+
+    else:
+        flash("Unknown payment mode.", "warning")
+        return redirect('/')
+
 
 @app.route('/payment-cancel')
 def payment_cancel():
@@ -884,6 +1025,7 @@ Education:
     
 # ─── courses ─────────────────────────────────────────
 @app.route('/admin/add-course', methods=['GET', 'POST'])
+@admin_required
 def add_course():
     form = CourseForm()
     if form.validate_on_submit():
@@ -908,6 +1050,7 @@ def add_course():
 
 # ─── Delete Course ─────────────────────────────────────────
 @app.route('/admin/delete-course/<int:course_id>', methods=['POST'])
+@admin_required
 def delete_course(course_id):
     course = Course.query.get_or_404(course_id)
     db.session.delete(course)
@@ -916,6 +1059,7 @@ def delete_course(course_id):
     return redirect(url_for('add_course'))  # Or wherever you're listing courses
 
 @app.route('/admin/edit-course/<int:course_id>', methods=['GET', 'POST'])
+@admin_required
 def edit_course(course_id):
     course = Course.query.get_or_404(course_id)
     form = CourseForm(obj=course)
@@ -944,20 +1088,14 @@ def view_courses():
     user = db.session.get(User, session['user_id'])
     registered_ids = {r.course_id for r in user.course_registrations}
     return render_template('courses.html', courses=courses, registered_ids=registered_ids)
+
 @app.route('/register-course/<int:course_id>', methods=['POST'])
 def register_course(course_id):
     if 'user_id' not in session:
         return redirect('/login')
 
     user = db.session.get(User, session['user_id'])
-    if not user:
-        flash("User not found", "error")
-        return redirect('/courses')
-
-    course = Course.query.get(course_id)
-    if not course:
-        flash("Course not found.", "error")
-        return redirect('/courses')
+    course = Course.query.get_or_404(course_id)
 
     # Check if already registered
     existing = CourseRegistration.query.filter_by(user_id=user.id, course_id=course.id).first()
@@ -965,40 +1103,29 @@ def register_course(course_id):
         flash("You are already registered for this course.", "info")
         return redirect('/courses')
 
-    # Register user
-    registration = CourseRegistration(user_id=user.id, course_id=course.id)
-    db.session.add(registration)
-    db.session.commit()
-
-    # Send confirmation email
+    # Start Stripe checkout
     try:
-        msg = Message(
-            subject=f"Registration Confirmed: {course.title}",
-            recipients=[user.email],
-            body=f"""
-Hi {user.full_name},
-
-You have successfully registered for the course "{course.title}" offered by {course.academy}.
-
-📅 Start Date: {course.start_date}
-📅 End Date: {course.end_date}
-💰 Fee: ${course.fee:.2f}
-
-You can access the course here:
-{course.link or "No link provided"}
-
-Thanks for registering!
-
-— GoGetJobs Team
-            """
+        checkout_session = stripe.checkout.Session.create(
+            customer_email=user.email,
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'unit_amount': int(course.fee * 100),  # Stripe takes cents
+                    'product_data': {'name': f"{course.title} by {course.academy}"}
+                },
+                'quantity': 1
+            }],
+            mode='payment',
+            success_url=url_for('payment_success', _external=True) + f"?course_id={course.id}",
+            cancel_url=url_for('payment_cancel', _external=True)
         )
-        mail.send(msg)
-        flash("✅ Registered successfully. Confirmation email sent.", "success")
+        return redirect(checkout_session.url, code=303)
     except Exception as e:
-        print(f"Email error: {e}")
-        flash("Registered, but failed to send confirmation email.", "warning")
+        print("Stripe error:", e)
+        flash("Failed to initiate payment.", "error")
+        return redirect('/courses')
 
-    return redirect('/courses')
 
 
 
@@ -1007,9 +1134,44 @@ Thanks for registering!
 
 
 @app.route('/admin/course-registrations')
+@admin_required
 def view_course_registrations():
     courses = Course.query.all()
     return render_template('admin_course_registrations.html', courses=courses)
+
+
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    return render_template('admin_dashboard.html')
+
+
+
+
+@app.route('/add-admin', methods=['GET', 'POST'])
+@admin_required
+def add_admin():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash("User already exists", "warning")
+            return redirect('/add-admin')
+
+        admin = User(
+            email=email,
+            password=password,  # ✅ plain for now, can hash later
+            is_admin=True
+        )
+        db.session.add(admin)
+        db.session.commit()
+        flash("✅ Admin created successfully!", "success")
+        return redirect('/login')
+
+    return render_template('add_admin.html')
+
 
 # ─── App Runner ─────────────────────────────────────────
 

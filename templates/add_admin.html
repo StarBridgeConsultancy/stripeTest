@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add Admin – GoGetJobs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white shadow-lg p-8 rounded-xl w-full max-w-sm">
+    <h2 class="text-2xl font-bold text-center text-[#000B8D] mb-4">Create Admin</h2>
+    <form method="POST" class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold">Email</label>
+        <input type="email" name="email" required class="w-full px-3 py-2 border rounded-lg" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold">Password</label>
+        <input type="password" name="password" required class="w-full px-3 py-2 border rounded-lg" />
+      </div>
+      <button type="submit" class="w-full bg-[#E21B4D] text-white py-2 rounded-lg hover:bg-[#c21742] transition">Add Admin</button>
+    </form>
+    <p class="text-center text-sm text-gray-600 mt-4">
+      <a href="/login" class="text-[#000B8D] hover:underline">Back to Login</a>
+    </p>
+  </div>
+</body>
+</html>
