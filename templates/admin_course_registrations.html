@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Course Registrations – GoGetJobs{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-[#000B8D] mb-6">Course Registrations</h1>
+
+{% for course in courses %}
+  <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+    <h2 class="text-xl font-semibold text-[#000B8D] mb-2">{{ course.title }} <span class="text-sm text-gray-600">({{ course.academy }})</span></h2>
+    <p class="text-gray-600 mb-2">Fee: ${{ "%.2f"|format(course.fee) }} | {{ course.start_date }} → {{ course.end_date }}</p>
+
+    {% if course.registrations %}
+      <ul class="list-disc list-inside text-gray-800">
+        {% for reg in course.registrations %}
+          <li>{{ reg.user.full_name or reg.user.email }} – Registered on {{ reg.registered_at.strftime('%Y-%m-%d') }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-gray-500">No registrations yet.</p>
+    {% endif %}
+  </div>
+{% else %}
+  <p>No courses available to display.</p>
+{% endfor %}
+{% endblock %}

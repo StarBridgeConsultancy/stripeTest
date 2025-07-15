@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}GoGetJobs{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans">
+
+ <!-- Navigation -->
+<nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+    <a href="{{ url_for('index') }}" class="text-xl font-bold text-[#E21B4D]">GoGetJobs</a>
+    <div class="space-x-6">
+      <a href="{{ url_for('jobs') }}" class="text-gray-700 hover:text-[#000B8D] font-medium">Jobs</a>
+      <a href="{{ url_for('view_courses') }}" class="text-gray-700 hover:text-[#000B8D] font-medium">Courses</a>
+      <a href="{{ url_for('dashboard') }}" class="text-gray-700 hover:text-[#000B8D] font-medium">Dashboard</a>
+      <a href="{{ url_for('profile') }}" class="text-gray-700 hover:text-[#000B8D] font-medium">Profile</a>
+      {% if session.get('user_id') %}
+        <a href="{{ url_for('logout') }}" class="text-red-600 hover:underline font-semibold">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="text-[#E21B4D] hover:underline font-semibold">Login</a>
+        <a href="{{ url_for('register') }}" class="bg-[#E21B4D] text-white px-4 py-2 rounded-lg hover:bg-[#c21742] transition font-semibold">Register</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="mb-4 p-4 rounded bg-{{ 'green' if category == 'success' else 'red' }}-100 text-{{ 'green' if category == 'success' else 'red' }}-800">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>

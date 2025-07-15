@@ -1,113 +1,144 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>GoGetJobs Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    :root {
-      --primary: #E21B4D;
-      --navy: #000B8D;
-      --yellow: #FFD300;
-    }
-  </style>
-</head>
-<body class="bg-gradient-to-br from-white via-[#f4f4f9] to-[#e2e8f0] min-h-screen px-4 py-6 text-gray-900">
+{% extends "base.html" %}
 
-  <!-- Main Dashboard Content -->
-  <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-extrabold text-[#000B8D]">Welcome, {{ user.full_name or user.email }}</h1>
-      <a href="{{ url_for('logout') }}" class="text-sm text-red-600 hover:underline font-medium">Logout</a>
+{% block title %}Dashboard – GoGetJobs{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+
+  <h1 class="text-3xl font-extrabold text-[#000B8D] mb-4">Welcome, {{ user.full_name or user.email }}</h1>
+
+  {% if not user.is_subscribed %}
+    <div class="bg-yellow-100 border border-yellow-400 text-yellow-800 p-4 rounded-lg mb-6">
+      <p>🚫 Your subscription is inactive. Please subscribe to access premium features.</p>
+      <a href="{{ url_for('subscribe') }}" class="mt-2 inline-block bg-[#E21B4D] text-white px-4 py-2 rounded hover:bg-[#c21742] transition">Subscribe Now</a>
+    </div>
+  {% else %}
+    <div class="bg-green-100 border border-green-400 text-green-800 p-4 rounded-lg mb-6">
+      🎉 You're subscribed! Enjoy full access to all features.
     </div>
 
-    {% if not user.is_subscribed %}
-      <div class="bg-yellow-100 border border-yellow-400 text-yellow-800 p-4 rounded-lg mb-4">
-        <p>Your subscription is inactive. Please subscribe to access premium features.</p>
-        <a href="{{ url_for('subscribe') }}" class="inline-block mt-3 bg-[#E21B4D] text-white px-4 py-2 rounded-lg hover:bg-[#c21742] transition">Subscribe</a>
-      </div>
-    {% else %}
-      <div class="text-green-700 font-medium bg-green-100 border border-green-400 p-4 rounded-lg mb-6">
-        🎉 You are subscribed! Access all features below.
-      </div>
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center mb-8">
+      <a href="{{ url_for('profile') }}" class="bg-[#000B8D] text-white px-4 py-3 rounded-lg hover:opacity-90 font-semibold">👤 Update Profile</a>
+      <a href="{{ url_for('jobs') }}" class="bg-[#E21B4D] text-white px-4 py-3 rounded-lg hover:opacity-90 font-semibold">💼 Browse Jobs</a>
+      <a href="{{ url_for('generate_cv') }}" class="bg-[#2c2b64] text-white px-4 py-3 rounded-lg hover:bg-[#1e1c50] font-semibold">📄 Download CV</a>
+      <a href="{{ url_for('view_courses') }}" class="bg-[#FFD300] text-[#000B8D] px-4 py-3 rounded-lg hover:opacity-90 font-semibold">🎓 View Courses</a>
+    </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center mb-8">
-        <a href="{{ url_for('profile') }}" class="bg-[#000B8D] text-white px-4 py-3 rounded-lg hover:opacity-90 transition font-semibold">Update Profile</a>
-        <a href="{{ url_for('jobs') }}" class="bg-[#E21B4D] text-white px-4 py-3 rounded-lg hover:opacity-90 transition font-semibold">Browse Jobs</a>
-        <a href="{{ url_for('dashboard') }}" class="bg-[#FFD300] text-[#000B8D] px-4 py-3 rounded-lg hover:opacity-90 transition font-semibold">My Applications</a>
-        <a href="{{ url_for('generate_cv') }}" class="bg-[#2c2b64] text-white px-4 py-3 rounded-lg hover:bg-[#1e1c50] transition font-semibold">Download My CV (PDF)</a>
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div class="bg-blue-50 border border-blue-200 p-5 rounded-lg text-center">
+        <p class="text-3xl font-bold text-[#000B8D]">{{ user.applications|length }}</p>
+        <p class="text-sm font-medium text-gray-600 mt-1">Job Applications</p>
       </div>
+      <div class="bg-purple-50 border border-purple-200 p-5 rounded-lg text-center">
+        <p class="text-3xl font-bold text-[#5B21B6]">{{ user.course_registrations|length }}</p>
+        <p class="text-sm font-medium text-gray-600 mt-1">Courses Registered</p>
+      </div>
+      <div class="bg-green-50 border border-green-200 p-5 rounded-lg text-center">
+        <p class="text-3xl font-bold text-green-700">{{ "Active" if user.is_subscribed else "Inactive" }}</p>
+        <p class="text-sm font-medium text-gray-600 mt-1">Subscription Status</p>
+      </div>
+    </div>
 
-      <div>
-        <h2 class="text-xl font-bold mb-4 text-[#000B8D]">Your Profile Summary</h2>
-        <ul class="list-disc list-inside space-y-2 text-gray-700">
-          <li><strong>Full Name:</strong> {{ user.full_name or 'Not set' }}</li>
-          <li><strong>Email:</strong> {{ user.email }}</li>
-          <li><strong>Country:</strong> {{ user.country or 'Not set' }}</li>
-          <li><strong>Preferred Job Type:</strong> {{ user.preferred_job_type or 'Not set' }}</li>
-          <li><strong>Preferred Industries:</strong> {{ user.preferred_industries or 'Not set' }}</li>
-          <li><strong>Skills:</strong> {{ user.skills or 'Not set' }}</li>
-        </ul>
-      </div>
+    <!-- Profile Summary -->
+    <div class="mb-8">
+      <h2 class="text-xl font-bold mb-2 text-[#000B8D]">📌 Profile Summary</h2>
+      <ul class="space-y-2 text-gray-700 text-sm">
+        <li><strong>Full Name:</strong> {{ user.full_name or 'Not set' }}</li>
+        <li><strong>Email:</strong> {{ user.email }}</li>
+        <li><strong>Phone:</strong> {{ user.phone or 'Not set' }}</li>
+        <li><strong>Country:</strong> {{ user.country or 'Not set' }}</li>
+        <li><strong>Preferred Job Type:</strong> {{ user.preferred_job_type or 'Not set' }}</li>
+        <li><strong>Preferred Industries:</strong> {{ user.preferred_industries or 'Not set' }}</li>
+        <li><strong>Skills:</strong> {{ user.skills or 'Not set' }}</li>
+      </ul>
+    </div>
+
+    <!-- Registered Courses -->
+    {% if user.course_registrations %}
+    <div class="mb-8">
+      <h2 class="text-xl font-bold mb-2 text-[#000B8D]">🎓 Your Courses</h2>
+      <ul class="space-y-2">
+        {% for reg in user.course_registrations %}
+          <li class="flex justify-between items-center bg-gray-50 border border-gray-200 p-4 rounded-lg">
+            <span><strong>{{ reg.course.title }}</strong> – {{ reg.course.academy }}</span>
+            {% if reg.course.link %}
+              <a href="{{ reg.course.link }}" target="_blank" class="bg-[#000B8D] text-white text-sm px-4 py-2 rounded hover:opacity-90">Start</a>
+            {% else %}
+              <span class="text-gray-500 text-sm italic">No link provided</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
     {% endif %}
-  </div>
 
-  <!-- ✅ Floating Animated Bot Message -->
-  <div id="chatbot-message" class="fixed bottom-[95px] right-[90px] bg-white text-[#2c2b64] px-4 py-2 rounded-lg shadow-lg border border-gray-300 animate-bounce z-50 text-sm font-medium max-w-[250px]">
-    Paste the job you're applying for,<br>and I’ll generate a CV for you!
-  </div>
+    <!-- Job Applications -->
+    {% if user.applications %}
+    <div class="mb-4">
+      <h2 class="text-xl font-bold mb-2 text-[#000B8D]">💼 Your Job Applications</h2>
+      <ul class="space-y-2">
+        {% for app in user.applications %}
+          <li class="flex justify-between items-center bg-gray-50 border border-gray-200 p-4 rounded-lg">
+            <div>
+              <strong>{{ app.job.title }}</strong> at {{ app.job.company }}
+              <p class="text-xs text-gray-600">Applied on {{ app.applied_date.strftime("%Y-%m-%d") }}</p>
+            </div>
+            <a href="{{ app.job.link }}" target="_blank" class="text-[#E21B4D] text-sm font-semibold hover:underline">View Job</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
 
-  <!-- ✅ Floating Chatbot Button -->
-  <div id="chatbot-button" onclick="toggleChatbot()" class="fixed bottom-[25px] right-[25px] bg-[#2c2b64] text-white px-4 py-3 rounded-full shadow-lg cursor-pointer z-50 text-lg font-bold hover:bg-[#1e1c50] transition">
-    💬
-  </div>
+<!-- Chatbot & Tip remains unchanged -->
+<div id="chatbot-message" class="fixed bottom-[95px] right-[90px] bg-white text-[#2c2b64] px-4 py-2 rounded-lg shadow-lg border border-gray-300 animate-bounce z-50 text-sm font-medium max-w-[250px]">
+  Paste the job you're applying for,<br>and I’ll generate a CV for you!
+</div>
 
-  <!-- ✅ Chatbot Container with Iframe -->
-  <div id="chatbot-container" style="display: none;">
-    <iframe src="{{ url_for('chatbot_ui') }}" frameborder="0"></iframe>
-  </div>
+<div id="chatbot-button" onclick="toggleChatbot()" class="fixed bottom-[25px] right-[25px] bg-[#2c2b64] text-white px-4 py-3 rounded-full shadow-lg cursor-pointer z-50 text-lg font-bold hover:bg-[#1e1c50] transition">
+  💬
+</div>
 
-  <!-- ✅ Custom Styling for Chatbot -->
-  <style>
-    #chatbot-container {
-      position: fixed;
-      bottom: 90px;
-      right: 25px;
-      width: 360px;
-      height: 520px;
-      background: white;
-      border: 1px solid #ccc;
-      z-index: 1000;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      border-radius: 1rem;
-      overflow: hidden;
-    }
-    #chatbot-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-  </style>
+<div id="chatbot-container" style="display: none;">
+  <iframe src="{{ url_for('chatbot_ui') }}" frameborder="0"></iframe>
+</div>
 
-  <!-- ✅ JavaScript to Handle Toggle and Animation -->
-  <script>
-    function toggleChatbot() {
-      const bot = document.getElementById('chatbot-container');
-      const tip = document.getElementById('chatbot-message');
-      bot.style.display = (bot.style.display === 'none') ? 'block' : 'none';
-      if (tip) tip.style.display = 'none'; // Hide tip when opened
-    }
+<style>
+  #chatbot-container {
+    position: fixed;
+    bottom: 90px;
+    right: 25px;
+    width: 360px;
+    height: 520px;
+    background: white;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+  #chatbot-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+</style>
 
-    // Auto-hide tip after 8 seconds
-    setTimeout(() => {
-      const tip = document.getElementById('chatbot-message');
-      if (tip) tip.style.display = 'none';
-    }, 8000);
-  </script>
-</body>
-</html>
+<script>
+  function toggleChatbot() {
+    const bot = document.getElementById('chatbot-container');
+    const tip = document.getElementById('chatbot-message');
+    bot.style.display = (bot.style.display === 'none') ? 'block' : 'none';
+    if (tip) tip.style.display = 'none';
+  }
+
+  setTimeout(() => {
+    const tip = document.getElementById('chatbot-message');
+    if (tip) tip.style.display = 'none';
+  }, 8000);
+</script>
+{% endblock %}

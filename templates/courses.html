@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Courses – GoGetJobs{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-[#000B8D] mb-6">Available Courses</h1>
+
+{% for course in courses %}
+  <div class="bg-white p-6 rounded-lg shadow-md mb-4">
+    <h2 class="text-xl font-semibold text-[#000B8D]">{{ course.title }}</h2>
+    <p class="text-gray-700 mt-1"><strong>Academy:</strong> {{ course.academy }}</p>
+    <p class="text-gray-700"><strong>Fee:</strong> ${{ "%.2f"|format(course.fee) }}</p>
+    <p class="text-gray-700"><strong>Duration:</strong> {{ course.start_date }} to {{ course.end_date }}</p>
+    <p class="mt-2">{{ course.description }}</p>
+
+    {% if course.link %}
+      <a href="{{ course.link }}" target="_blank" class="inline-block mt-3 text-[#000B8D] underline font-medium hover:text-[#E21B4D]">
+        🔗 View Course
+      </a>
+    {% endif %}
+
+    {% if course.id in registered_ids %}
+      <p class="text-green-700 mt-4 font-semibold">✅ You have registered for this course.</p>
+    {% else %}
+      <button type="button"
+              class="mt-4 bg-[#E21B4D] text-white px-6 py-2 rounded-full shadow hover:bg-[#c21742] transition-transform transform hover:scale-105"
+              data-course-id="{{ course.id }}"
+              data-course-title="{{ course.title }}"
+              onclick="openConfirmModal(this)">
+        Register
+      </button>
+    {% endif %}
+  </div>
+{% else %}
+  <p>No courses available at this time.</p>
+{% endfor %}
+
+<!-- Modal -->
+<div id="confirmModal" class="fixed inset-0 hidden z-50 bg-black bg-opacity-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 transform transition-all scale-100">
+    <h2 class="text-xl font-semibold text-[#000B8D] mb-4">Confirm Registration</h2>
+    <p class="text-gray-700 mb-6">Are you sure you want to register for <span id="modal-course-name" class="font-bold text-[#E21B4D]"></span>?</p>
+    
+    <form id="registerForm" method="POST">
+      <input type="hidden" name="course_id" id="modal-course-id">
+      <div class="flex justify-end space-x-4">
+        <button type="button" onclick="closeConfirmModal()" class="px-4 py-2 rounded-full border border-gray-400 text-gray-600 hover:bg-gray-100">Cancel</button>
+        <button type="submit" class="bg-[#000B8D] text-white px-6 py-2 rounded-full hover:bg-[#001273] transition-transform transform hover:scale-105">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- JS Modal Logic -->
+<script>
+  function openConfirmModal(button) {
+    const courseId = button.getAttribute('data-course-id');
+    const courseTitle = button.getAttribute('data-course-title');
+
+    document.getElementById('modal-course-id').value = courseId;
+    document.getElementById('modal-course-name').textContent = courseTitle;
+    document.getElementById('registerForm').action = `/register-course/${courseId}`;
+
+    document.getElementById('confirmModal').classList.remove('hidden');
+  }
+
+  function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.add('hidden');
+  }
+
+  // Optional: close modal on ESC or click outside
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeConfirmModal();
+  });
+  window.addEventListener('click', e => {
+    const modal = document.getElementById('confirmModal');
+    if (e.target === modal) closeConfirmModal();
+  });
+</script>
+{% endblock %}

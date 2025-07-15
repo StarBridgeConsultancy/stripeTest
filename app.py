@@ -22,6 +22,11 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 import os, re
+from flask import request, session, jsonify
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 # ─── External Services ──────────────────────────────────
 from fpdf import FPDF
@@ -137,6 +142,31 @@ class JobApplication(db.Model):
     job = db.relationship('Job', back_populates='applications')
 
 
+class Course(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    academy = db.Column(db.String(100), nullable=False)
+    fee = db.Column(db.Float, nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    description = db.Column(db.Text)
+    link = db.Column(db.String(255))  # New field for course URL
+
+    registrations = db.relationship('CourseRegistration', back_populates='course', cascade='all, delete-orphan')
+
+
+
+class CourseRegistration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'))
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id', ondelete='CASCADE'))
+    registered_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='course_registrations')
+    course = db.relationship('Course', back_populates='registrations')
+
+
+
 # ─── WTForms ────────────────────────────────────────────
 
 class JobForm(FlaskForm):
@@ -172,6 +202,19 @@ class JobForm(FlaskForm):
     link = StringField('Job Link', validators=[DataRequired(), URL()])
     description = TextAreaField('Description', validators=[Optional()])
     submit = SubmitField('Add Job')
+
+
+class CourseForm(FlaskForm):
+    title = StringField('Course Title', validators=[DataRequired()])
+    academy = StringField('Academy Offering Course', validators=[DataRequired()])
+    fee = StringField('Course Fee (e.g., $99)', validators=[DataRequired()])
+    start_date = StringField('Start Date (YYYY-MM-DD)', validators=[DataRequired()])
+    end_date = StringField('End Date (YYYY-MM-DD)', validators=[DataRequired()])
+    link = StringField('Course Link (URL)')  # New form field
+    description = TextAreaField('Course Description')
+    submit = SubmitField('Add Course')
+
+    
 
 # ─── PDF CV Generator Class ─────────────────────────────
 
@@ -325,8 +368,23 @@ def logout():
 def dashboard():
     if 'user_id' not in session:
         return redirect('/login')
+    
     user = db.session.get(User, session['user_id'])
-    return render_template('dashboard.html', user=user)
+    if not user:
+        flash("User not found.", "error")
+        return redirect('/login')
+    
+    # Load relationships
+    applications = user.applications  # Job applications
+    registered_courses = user.course_registrations  # Courses registered
+    
+    return render_template(
+        'dashboard.html',
+        user=user,
+        applications=applications,
+        registered_courses=registered_courses
+    )
+
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -560,6 +618,7 @@ latest_cv = BytesIO()
 
 # ─── Chatbot API Endpoint ───────────────────────────────
 
+
 @app.route('/chatbot-api', methods=['POST'])
 def chatbot_api():
     global latest_cv
@@ -623,14 +682,73 @@ Format:
 - Then EDUCATION
 - Use plain text and dashes (-) for bullets.
 """
+
         try:
             response = model.generate_content(prompt)
             text_cv = response.text.strip()
+            lines = text_cv.split('\n')
 
+            # Start creating styled document
             doc = Document()
-            for line in text_cv.split('\n'):
-                doc.add_paragraph(line)
 
+            # Set default font
+            style = doc.styles['Normal']
+            style.font.name = 'Calibri'
+            style.font.size = Pt(11)
+
+            # ─── Helper Functions ────────────────────────
+            def add_heading(doc, text):
+                heading = doc.add_paragraph()
+                run = heading.add_run(text)
+                run.bold = True
+                run.font.size = Pt(12)
+                run.font.color.rgb = RGBColor(44, 43, 100)  # Deep Blue
+                run.font.name = 'Calibri'
+                heading.space_after = Pt(4)
+
+            def add_bullet_points(doc, text):
+                for line in text.split('\n'):
+                    if line.strip().startswith('-'):
+                        doc.add_paragraph(line.strip(), style='List Bullet')
+
+            def add_horizontal_line(paragraph):
+                p = paragraph._p
+                pPr = p.get_or_add_pPr()
+                pBdr = OxmlElement('w:pBdr')
+                bottom = OxmlElement('w:bottom')
+                bottom.set(qn('w:val'), 'single')
+                bottom.set(qn('w:sz'), '6')
+                bottom.set(qn('w:space'), '1')
+                bottom.set(qn('w:color'), 'C1272D')  # Red line
+                pBdr.append(bottom)
+                pPr.append(pBdr)
+
+            # ─── Build Document ──────────────────────────
+
+            # Header
+            doc.add_paragraph(lines[0].strip()).runs[0].bold = True
+            doc.add_paragraph(lines[1].strip())
+
+            add_horizontal_line(doc.add_paragraph())  # Line separator
+
+            # Parse rest of the CV
+            current_section = None
+            buffer = []
+
+            for line in lines[2:]:
+                if line.strip().isupper():  # New section
+                    if current_section and buffer:
+                        add_bullet_points(doc, '\n'.join(buffer))
+                        buffer = []
+                    add_heading(doc, line.strip())
+                    current_section = line.strip()
+                else:
+                    buffer.append(line)
+
+            if current_section and buffer:
+                add_bullet_points(doc, '\n'.join(buffer))
+
+            # Save document
             latest_cv = BytesIO()
             doc.save(latest_cv)
             latest_cv.seek(0)
@@ -644,7 +762,8 @@ Format:
                 "reply": f"❌ Failed to generate your CV: {str(e)}"
             }), 500
 
-    # Else treat as a job-related question
+    # ─── Job-Related Question ──────────────────────────
+
     prompt = f"""
 You're a helpful job assistant bot. Answer only job-related questions.
 
@@ -761,7 +880,139 @@ Education:
 
     except Exception as e:
         return f"Error generating CV with Gemini: {e}"
+    
+    
+# ─── courses ─────────────────────────────────────────
+@app.route('/admin/add-course', methods=['GET', 'POST'])
+def add_course():
+    form = CourseForm()
+    if form.validate_on_submit():
+        course = Course(
+            title=form.title.data,
+            academy=form.academy.data,
+            fee=float(form.fee.data.replace('$', '').replace(',', '')),
+            start_date=datetime.strptime(form.start_date.data, "%Y-%m-%d").date(),
+            end_date=datetime.strptime(form.end_date.data, "%Y-%m-%d").date(),
+            description=form.description.data,
+            link=form.link.data
+        )
+        db.session.add(course)
+        db.session.commit()
+        flash("Course added successfully!", "success")
+        return redirect(url_for('add_course'))
+
+    # Get all courses for display
+    courses = Course.query.order_by(Course.start_date.desc()).all()
+    return render_template('add_course.html', form=form, courses=courses)
+
+
+# ─── Delete Course ─────────────────────────────────────────
+@app.route('/admin/delete-course/<int:course_id>', methods=['POST'])
+def delete_course(course_id):
+    course = Course.query.get_or_404(course_id)
+    db.session.delete(course)
+    db.session.commit()
+    flash(f"Course '{course.title}' has been deleted.", "success")
+    return redirect(url_for('add_course'))  # Or wherever you're listing courses
+
+@app.route('/admin/edit-course/<int:course_id>', methods=['GET', 'POST'])
+def edit_course(course_id):
+    course = Course.query.get_or_404(course_id)
+    form = CourseForm(obj=course)
+
+    if form.validate_on_submit():
+        course.title = form.title.data
+        course.academy = form.academy.data
+        course.fee = float(form.fee.data.replace('$', '').replace(',', ''))
+        course.start_date = datetime.strptime(form.start_date.data, "%Y-%m-%d").date()
+        course.end_date = datetime.strptime(form.end_date.data, "%Y-%m-%d").date()
+        course.description = form.description.data
+        course.link = form.link.data
+        db.session.commit()
+        flash("Course updated successfully!", "success")
+        return redirect(url_for('add_course'))
+
+    # On GET or form errors, render dedicated edit page
+    return render_template('edit_course.html', form=form, course=course)
+
+
+@app.route('/courses')
+def view_courses():
+    if 'user_id' not in session:
+        return redirect('/login')
+    courses = Course.query.all()
+    user = db.session.get(User, session['user_id'])
+    registered_ids = {r.course_id for r in user.course_registrations}
+    return render_template('courses.html', courses=courses, registered_ids=registered_ids)
+@app.route('/register-course/<int:course_id>', methods=['POST'])
+def register_course(course_id):
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        flash("User not found", "error")
+        return redirect('/courses')
+
+    course = Course.query.get(course_id)
+    if not course:
+        flash("Course not found.", "error")
+        return redirect('/courses')
+
+    # Check if already registered
+    existing = CourseRegistration.query.filter_by(user_id=user.id, course_id=course.id).first()
+    if existing:
+        flash("You are already registered for this course.", "info")
+        return redirect('/courses')
+
+    # Register user
+    registration = CourseRegistration(user_id=user.id, course_id=course.id)
+    db.session.add(registration)
+    db.session.commit()
+
+    # Send confirmation email
+    try:
+        msg = Message(
+            subject=f"Registration Confirmed: {course.title}",
+            recipients=[user.email],
+            body=f"""
+Hi {user.full_name},
+
+You have successfully registered for the course "{course.title}" offered by {course.academy}.
+
+📅 Start Date: {course.start_date}
+📅 End Date: {course.end_date}
+💰 Fee: ${course.fee:.2f}
+
+You can access the course here:
+{course.link or "No link provided"}
+
+Thanks for registering!
+
+— GoGetJobs Team
+            """
+        )
+        mail.send(msg)
+        flash("✅ Registered successfully. Confirmation email sent.", "success")
+    except Exception as e:
+        print(f"Email error: {e}")
+        flash("Registered, but failed to send confirmation email.", "warning")
+
+    return redirect('/courses')
+
+
+
+
+
+
+
+@app.route('/admin/course-registrations')
+def view_course_registrations():
+    courses = Course.query.all()
+    return render_template('admin_course_registrations.html', courses=courses)
+
 # ─── App Runner ─────────────────────────────────────────
+
 
 if __name__ == '__main__':
     with app.app_context():

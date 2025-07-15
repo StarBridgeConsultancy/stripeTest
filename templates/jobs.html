@@ -1,101 +1,91 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Your Jobs - GoGetJobs</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-  </style>
-</head>
-<body class="bg-gradient-to-br from-white via-[#f4f4f9] to-[#e2e8f0] min-h-screen p-6 flex flex-col items-center text-gray-900">
+{% extends "base.html" %}
 
-  <div class="w-full max-w-5xl bg-white p-8 rounded-2xl shadow-lg space-y-10">
+{% block title %}Your Jobs – GoGetJobs{% endblock %}
 
-    <h1 class="text-3xl font-extrabold text-[#000B8D] text-center">GoGetJobs – Your Job Dashboard</h1>
+{% block content %}
+<div class="w-full max-w-5xl mx-auto bg-white p-8 rounded-2xl shadow-lg space-y-10">
 
-    <!-- Applied Jobs Section -->
-    <section>
-      <h2 class="text-2xl font-semibold text-[#E21B4D] mb-4">Jobs You've Already Applied To</h2>
-      {% if applied_jobs %}
-        <ul class="space-y-4">
-          {% for job in applied_jobs %}
-            <li class="glass p-5 rounded-xl shadow border border-gray-200">
-              <h3 class="text-xl font-bold text-gray-800">{{ job.title }}</h3>
-              <p class="text-gray-600">{{ job.company }} &middot; {{ job.location }}</p>
-              {% for app in user.applications %}
-                {% if app.job_id == job.id %}
-                  <p class="text-sm text-gray-500">Applied on: {{ app.applied_date.strftime('%Y-%m-%d') }}</p>
-                {% endif %}
-              {% endfor %}
-              <a href="{{ job.link }}" target="_blank" class="text-[#000B8D] hover:underline mt-2 inline-block">🔗 View Job Posting</a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-500">You haven't applied to any jobs yet.</p>
-      {% endif %}
-    </section>
+  <h1 class="text-3xl font-extrabold text-[#000B8D] text-center">GoGetJobs – Your Job Dashboard</h1>
 
-    <hr class="border-gray-300 my-6">
-
-    <!-- Available Jobs Section -->
-    <section>
-      <h2 class="text-2xl font-semibold text-green-700 mb-4">Available Jobs for You</h2>
-      {% if available_jobs %}
-        <ul class="space-y-4">
-          {% for job in available_jobs %}
-            <li class="glass p-5 rounded-xl shadow border border-gray-200">
-              <h3 class="text-xl font-bold text-gray-800">{{ job.title }}</h3>
-              <p class="text-gray-600">{{ job.company }} &middot; {{ job.location }}</p>
-              <a href="{{ job.link }}" target="_blank" class="text-green-600 hover:underline mt-2 inline-block">🔗 View Job Posting</a>
-
-              {% if is_subscribed %}
-                <form action="/apply" method="POST" class="mt-3">
-                  <input type="hidden" name="job_id" value="{{ job.id }}">
-                  <button type="submit" class="bg-[#E21B4D] text-white px-4 py-2 rounded-lg hover:bg-[#c51744] transition">Apply for Me</button>
-                </form>
-              {% else %}
-                <button onclick="openSubscribeModal()" class="bg-gray-300 text-gray-600 px-4 py-2 rounded-lg cursor-not-allowed mt-3">Subscribe to Apply</button>
+  <!-- Applied Jobs Section -->
+  <section>
+    <h2 class="text-2xl font-semibold text-[#E21B4D] mb-4">Jobs You've Already Applied To</h2>
+    {% if applied_jobs %}
+      <ul class="space-y-4">
+        {% for job in applied_jobs %}
+          <li class="glass p-5 rounded-xl shadow border border-gray-200">
+            <h3 class="text-xl font-bold text-gray-800">{{ job.title }}</h3>
+            <p class="text-gray-600">{{ job.company }} &middot; {{ job.location }}</p>
+            {% for app in user.applications %}
+              {% if app.job_id == job.id %}
+                <p class="text-sm text-gray-500">Applied on: {{ app.applied_date.strftime('%Y-%m-%d') }}</p>
               {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-500">No new jobs available right now. We'll check again soon!</p>
-      {% endif %}
-    </section>
+            {% endfor %}
+            <a href="{{ job.link }}" target="_blank" class="text-[#000B8D] hover:underline mt-2 inline-block">🔗 View Job Posting</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-gray-500">You haven't applied to any jobs yet.</p>
+    {% endif %}
+  </section>
 
-    <div class="text-center mt-6">
-      <a href="/dashboard" class="text-[#000B8D] hover:underline">← Back to Dashboard</a>
-    </div>
+  <hr class="border-gray-300 my-6">
 
+  <!-- Available Jobs Section -->
+  <section>
+    <h2 class="text-2xl font-semibold text-green-700 mb-4">Available Jobs for You</h2>
+    {% if available_jobs %}
+      <ul class="space-y-4">
+        {% for job in available_jobs %}
+          <li class="glass p-5 rounded-xl shadow border border-gray-200">
+            <h3 class="text-xl font-bold text-gray-800">{{ job.title }}</h3>
+            <p class="text-gray-600">{{ job.company }} &middot; {{ job.location }}</p>
+            <a href="{{ job.link }}" target="_blank" class="text-green-600 hover:underline mt-2 inline-block">🔗 View Job Posting</a>
+
+            {% if is_subscribed %}
+              <form action="/apply" method="POST" class="mt-3">
+                <input type="hidden" name="job_id" value="{{ job.id }}">
+                <button type="submit" class="bg-[#E21B4D] text-white px-4 py-2 rounded-lg hover:bg-[#c51744] transition">Apply for Me</button>
+              </form>
+            {% else %}
+              <button onclick="openSubscribeModal()" class="bg-gray-300 text-gray-600 px-4 py-2 rounded-lg cursor-not-allowed mt-3">Subscribe to Apply</button>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-gray-500">No new jobs available right now. We'll check again soon!</p>
+    {% endif %}
+  </section>
+
+  <div class="text-center mt-6">
+    <a href="{{ url_for('dashboard') }}" class="text-[#000B8D] hover:underline">← Back to Dashboard</a>
   </div>
 
-  <!-- Subscription Modal -->
-  <div id="subscribeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white p-8 rounded-xl shadow-lg text-center w-96">
-      <h3 class="text-2xl font-semibold mb-4 text-[#E21B4D]">Subscribe to Apply</h3>
-      <p class="mb-6 text-gray-600">Access premium job opportunities and apply directly through GoGetJobs.</p>
-      <a href="/subscribe" class="bg-[#000B8D] text-white px-4 py-2 rounded hover:bg-blue-800">Subscribe Now</a>
-      <button onclick="closeModal()" class="mt-4 text-sm text-gray-500 hover:underline">No thanks</button>
-    </div>
+</div>
+
+<!-- Subscription Modal -->
+<div id="subscribeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white p-8 rounded-xl shadow-lg text-center w-96">
+    <h3 class="text-2xl font-semibold mb-4 text-[#E21B4D]">Subscribe to Apply</h3>
+    <p class="mb-6 text-gray-600">Access premium job opportunities and apply directly through GoGetJobs.</p>
+    <a href="{{ url_for('subscribe') }}" class="bg-[#000B8D] text-white px-4 py-2 rounded hover:bg-blue-800">Subscribe Now</a>
+    <button onclick="closeModal()" class="mt-4 text-sm text-gray-500 hover:underline">No thanks</button>
   </div>
+</div>
 
-  <script>
-    function openSubscribeModal() {
-      document.getElementById('subscribeModal').classList.remove('hidden');
-      document.getElementById('subscribeModal').classList.add('flex');
-    }
+<script>
+  function openSubscribeModal() {
+    const modal = document.getElementById('subscribeModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
 
-    function closeModal() {
-      document.getElementById('subscribeModal').classList.add('hidden');
-      document.getElementById('subscribeModal').classList.remove('flex');
-    }
-  </script>
-
-</body>
-</html>
+  function closeModal() {
+    const modal = document.getElementById('subscribeModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+</script>
+{% endblock %}

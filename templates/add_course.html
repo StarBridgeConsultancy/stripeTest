@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if editing %}Edit Course – GoGetJobs{% else %}Add Course – GoGetJobs{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-[#000B8D] mb-6">
+  {% if editing %}Edit Course{% else %}Add New Course{% endif %}
+</h1>
+
+<form method="POST" class="space-y-4 bg-white p-6 rounded-lg shadow-md max-w-xl">
+  {{ form.hidden_tag() }}
+
+  <div>
+    {{ form.title.label(class="block font-medium") }}
+    {{ form.title(class="w-full p-2 border border-gray-300 rounded") }}
+  </div>
+
+  <div>
+    {{ form.academy.label(class="block font-medium") }}
+    {{ form.academy(class="w-full p-2 border border-gray-300 rounded") }}
+  </div>
+
+  <div>
+    {{ form.fee.label(class="block font-medium") }}
+    {{ form.fee(class="w-full p-2 border border-gray-300 rounded") }}
+  </div>
+
+  <div>
+    {{ form.start_date.label(class="block font-medium") }}
+    {{ form.start_date(class="w-full p-2 border border-gray-300 rounded") }}
+  </div>
+
+  <div>
+    {{ form.end_date.label(class="block font-medium") }}
+    {{ form.end_date(class="w-full p-2 border border-gray-300 rounded") }}
+  </div>
+
+  <div>
+    {{ form.description.label(class="block font-medium") }}
+    {{ form.description(class="w-full p-2 border border-gray-300 rounded") }}
+  </div>
+
+  <div>
+    {{ form.submit(class="bg-[#E21B4D] text-white px-4 py-2 rounded hover:bg-[#c21742]", value=( "Update Course" if editing else "Add Course")) }}
+  </div>
+</form>
+
+<!-- Existing Courses List -->
+{% if courses %}
+  <h2 class="text-xl font-bold mt-10 mb-4">Existing Courses</h2>
+  <div class="space-y-4">
+    {% for course in courses %}
+      <div class="bg-white p-4 rounded shadow flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+        <div>
+          <h3 class="text-lg font-semibold text-[#000B8D]">{{ course.title }}</h3>
+          <p class="text-sm text-gray-600">
+            {{ course.academy }} | ${{ "%.2f"|format(course.fee) }} | {{ course.start_date }} → {{ course.end_date }}
+          </p>
+        </div>
+        <div class="flex space-x-2">
+          <a href="{{ url_for('edit_course', course_id=course.id) }}"
+             class="bg-yellow-400 text-[#000B8D] px-4 py-2 rounded-full shadow hover:bg-yellow-300 transition">
+            ✏️ Edit
+          </a>
+          <form action="{{ url_for('delete_course', course_id=course.id) }}" method="POST"
+                onsubmit="return confirm('Are you sure you want to delete this course?');">
+            <button type="submit"
+                    class="bg-red-600 text-white px-4 py-2 rounded-full shadow hover:bg-red-700 transition">
+              🗑️ Delete
+            </button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="mt-8 text-gray-500">No courses available yet.</p>
+{% endif %}
+
+{% endblock %}
