@@ -1117,7 +1117,7 @@ def register_course(course_id):
                 'quantity': 1
             }],
             mode='payment',
-            success_url=url_for('payment_success', _external=True) + f"?course_id={course.id}",
+            success_url=url_for('payment_success', _external=True) + f"?mode=course&course_id={course.id}",
             cancel_url=url_for('payment_cancel', _external=True)
         )
         return redirect(checkout_session.url, code=303)
