@@ -46,7 +46,7 @@
             {% if is_subscribed %}
               <form action="/apply" method="POST" class="mt-3">
                 <input type="hidden" name="job_id" value="{{ job.id }}">
-                <button type="submit" class="bg-[#E21B4D] text-white px-4 py-2 rounded-lg hover:bg-[#c51744] transition">Apply for Me</button>
+                <button type="submit" class="bg-[#E21B4D] text-white px-4 py-2 rounded-lg hover:bg-[#c51744] transition">Apply </button>
               </form>
             {% else %}
               <button onclick="openSubscribeModal()" class="bg-gray-300 text-gray-600 px-4 py-2 rounded-lg cursor-not-allowed mt-3">Subscribe to Apply</button>

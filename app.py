@@ -255,6 +255,12 @@ class CVPDF(FPDF):
             self.ln(2)
 
 
+@app.context_processor
+def inject_admin_status():
+    user = db.session.get(User, session.get('user_id')) if session.get('user_id') else None
+    return dict(is_admin=user.is_admin if user else False)
+
+
 
 def admin_required(f):
     @wraps(f)
@@ -436,11 +442,14 @@ def dashboard():
     )
 
 
+
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'user_id' not in session:
         return redirect('/login')
+
     user = db.session.get(User, session['user_id'])
+
     if request.method == 'POST':
         user.full_name = request.form.get('full_name')
         user.phone = request.form.get('phone')
@@ -450,10 +459,33 @@ def profile():
         user.preferred_job_type = request.form.get('preferred_job_type')
         user.preferred_industries = ','.join(request.form.getlist('preferred_industries'))
         user.skills = request.form.get('skills')
-        user.experience = request.form.get('experience')
+
+        # Handle multi-entry experience
+        companies = request.form.getlist('experience_company[]')
+        roles = request.form.getlist('experience_role[]')
+        periods = request.form.getlist('experience_period[]')
+        experience_entries = []
+
+        for c, r, p in zip(companies, roles, periods):
+            if c.strip() or r.strip() or p.strip():
+                experience_entries.append(f"{c} | {r} | {p}")
+
+        user.experience = '\n'.join(experience_entries)
+
         user.education = request.form.get('education')
+
+        # Optional: handle CV upload
+        if 'cv' in request.files:
+            file = request.files['cv']
+            if file.filename:
+                filename = secure_filename(file.filename)
+                filepath = os.path.join('static/uploads/cvs', filename)
+                file.save(filepath)
+                user.cv_filename = filename
+
         db.session.commit()
         return redirect('/dashboard')
+
     return render_template('profile.html', user=user)
 
 # ─── Routes: Job Management ─────────────────────────────
@@ -488,7 +520,7 @@ def delete_job(job_id):
     db.session.delete(job)
     db.session.commit()
     flash('Job deleted successfully', 'success')
-    return redirect(url_for('add_job'))
+    return redirect(url_for('admin_dashboard'))
 
 # ─── Routes: Jobs Page & Application ────────────────────
 
@@ -538,6 +570,7 @@ def jobs():
 def apply():
     if 'user_id' not in session:
         return redirect('/login')
+
     try:
         job_id = int(request.form['job_id'])
     except (ValueError, KeyError):
@@ -551,34 +584,21 @@ def apply():
         flash("Job does not exist.", "error")
         return redirect('/jobs')
 
+    # Check if already applied
     existing_application = JobApplication.query.filter_by(user_id=user.id, job_id=job.id).first()
     if existing_application:
         flash("You have already applied to this job.", "info")
-        return redirect('/jobs')
+        return redirect(job.link)
 
+    # Record application
     new_application = JobApplication(user_id=user.id, job_id=job.id)
     db.session.add(new_application)
     db.session.commit()
-    flash("Applied successfully!", "success")
+    flash("Application recorded. Redirecting...", "success")
 
-    cv_pdf = generate_cv(user)
-    email_body = generate_email_body(user, job)
+    # Redirect to the job's external application link
+    return redirect(job.link)
 
-    try:
-        msg = Message(
-            subject=f"Job Application for {job.title}",
-            recipients=[job.email],
-            body=email_body,
-            reply_to=user.email
-        )
-        msg.attach("CV.pdf", "application/pdf", cv_pdf.getvalue())
-        mail.send(msg)
-        flash("Email sent to the employer!", "success")
-    except Exception as e:
-        print("Email sending failed:", e)
-        flash("Failed to send application email.", "error")
-
-    return redirect('/jobs')
 
 # ─── Routes: CV & Styling ───────────────────────────────
 
@@ -922,8 +942,42 @@ Question: {user_message}
     except Exception as e:
         return jsonify({"reply": f"Error: {str(e)}"}), 500
 
-# ─── Route: Download CV from Chatbot ────────────────────
+# ─── Route: Download Csv for course  ────────────────────
+@app.route('/download-registrations')
+def download_registrations_csv():
+    selected_academy = request.args.get('academy')
 
+    if selected_academy:
+        # Normalize input and data for comparison
+        selected_academy = selected_academy.strip().lower()
+        courses = Course.query.all()
+        courses = [c for c in courses if c.academy and c.academy.strip().lower() == selected_academy]
+    else:
+        courses = Course.query.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Course', 'Academy', 'Fee', 'Start Date', 'End Date', 'Registrant', 'Registered At'])
+
+    for course in courses:
+        for reg in course.registrations:
+            writer.writerow([
+                course.title,
+                course.academy,
+                "%.2f" % course.fee,
+                course.start_date,
+                course.end_date,
+                reg.user.full_name or reg.user.email,
+                reg.registered_at.strftime('%Y-%m-%d')
+            ])
+
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=course_registrations.csv"
+    response.headers["Content-type"] = "text/csv"
+    return response
+
+
+# ─── Route: Download CV from Chatbot ────────────────────
 @app.route('/chatbot-download-cv')
 def chatbot_download_cv():
     if 'user_id' not in session:
@@ -1133,17 +1187,42 @@ def register_course(course_id):
 
 
 
+from flask import request, make_response, render_template
+import io, csv
+
 @app.route('/admin/course-registrations')
 @admin_required
 def view_course_registrations():
-    courses = Course.query.all()
-    return render_template('admin_course_registrations.html', courses=courses)
+    selected_academy = request.args.get('academy')
+
+    # Filter by academy if provided
+    if selected_academy:
+        courses = Course.query.filter_by(academy=selected_academy).all()
+    else:
+        courses = Course.query.all()
+
+    # Get unique list of academies for the filter dropdown
+    academies = db.session.query(Course.academy).distinct().all()
+    academies = [a[0] for a in academies]
+
+    return render_template(
+        'admin_course_registrations.html',
+        courses=courses,
+        academies=academies,
+        selected_academy=selected_academy
+    )
 
 
 @app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
-    return render_template('admin_dashboard.html')
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+
+    jobs = Job.query.order_by(Job.id.desc()).paginate(page=page, per_page=per_page)
+
+    return render_template('admin_dashboard.html', jobs=jobs)
+
 
 
 
@@ -1171,6 +1250,9 @@ def add_admin():
         return redirect('/login')
 
     return render_template('add_admin.html')
+
+
+
 
 
 # ─── App Runner ─────────────────────────────────────────

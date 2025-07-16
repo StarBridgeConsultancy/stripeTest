@@ -5,22 +5,61 @@
 {% block content %}
 <h1 class="text-2xl font-bold text-[#000B8D] mb-6">Course Registrations</h1>
 
-{% for course in courses %}
-  <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-    <h2 class="text-xl font-semibold text-[#000B8D] mb-2">{{ course.title }} <span class="text-sm text-gray-600">({{ course.academy }})</span></h2>
-    <p class="text-gray-600 mb-2">Fee: ${{ "%.2f"|format(course.fee) }} | {{ course.start_date }} → {{ course.end_date }}</p>
+<!-- Filter by Academy -->
+<form method="get" class="mb-4">
+  <label for="academy" class="font-medium mr-2">Filter by Academy:</label>
+  <select name="academy" id="academy" class="border border-gray-300 rounded p-1">
+    <option value="">All</option>
+    {% for acad in academies %}
+      <option value="{{ acad }}" {% if selected_academy == acad %}selected{% endif %}>{{ acad }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="ml-2 px-3 py-1 bg-[#000B8D] text-white rounded">Filter</button>
+</form>
 
-    {% if course.registrations %}
-      <ul class="list-disc list-inside text-gray-800">
-        {% for reg in course.registrations %}
-          <li>{{ reg.user.full_name or reg.user.email }} – Registered on {{ reg.registered_at.strftime('%Y-%m-%d') }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="text-gray-500">No registrations yet.</p>
-    {% endif %}
-  </div>
-{% else %}
-  <p>No courses available to display.</p>
-{% endfor %}
+<!-- CSV Download Button -->
+<a href="{{ url_for('download_registrations_csv', academy=selected_academy) }}"
+   class="inline-block mb-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+   Download CSV
+</a>
+
+<!-- Course Table -->
+<div class="overflow-auto">
+  <table class="min-w-full bg-white border border-gray-200 text-sm">
+    <thead class="bg-[#000B8D] text-white">
+      <tr>
+        <th class="text-left px-4 py-2">Course</th>
+        <th class="text-left px-4 py-2">Academy</th>
+        <th class="text-left px-4 py-2">Fee</th>
+        <th class="text-left px-4 py-2">Dates</th>
+        <th class="text-left px-4 py-2">Registrations</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for course in courses %}
+        <tr class="border-t">
+          <td class="px-4 py-2 font-medium">{{ course.title }}</td>
+          <td class="px-4 py-2">{{ course.academy }}</td>
+          <td class="px-4 py-2">${{ "%.2f"|format(course.fee) }}</td>
+          <td class="px-4 py-2">{{ course.start_date }} → {{ course.end_date }}</td>
+          <td class="px-4 py-2">
+            {% if course.registrations %}
+              <ul class="list-disc list-inside">
+                {% for reg in course.registrations %}
+                  <li>{{ reg.user.full_name or reg.user.email }} – {{ reg.registered_at.strftime('%Y-%m-%d') }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <span class="text-gray-500">None</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="5" class="px-4 py-4 text-center text-gray-500">No courses available.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
